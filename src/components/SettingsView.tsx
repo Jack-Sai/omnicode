@@ -41,7 +41,7 @@ const LANGUAGE_OPTIONS: SegmentedOption<'zh' | 'en'>[] = [
 
 const ABOUT_ROWS = [
   { labelKey: 'settings.about.product', value: 'Omni Code' },
-  { labelKey: 'settings.about.version', value: '0.1.0' },
+  { labelKey: 'settings.about.version', value: '0.2.0' },
   { labelKey: 'settings.about.author', value: 'Jack', href: 'https://github.com/Jack-Sai' },
   { labelKey: 'settings.about.github', value: 'github.com/Jack-Sai/omnicode', href: 'https://github.com/Jack-Sai/omnicode' },
 ];
