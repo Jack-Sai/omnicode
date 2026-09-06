@@ -1,0 +1,83 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build output
+dist
+dist-ssr
+build
+*.local
+
+# Tauri
+src-tauri/target
+src-tauri/gen
+src-tauri/wix
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.swo
+*~
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Optional npm dependencies
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Rust
+src-tauri/target/
+Cargo.lock
+
+# Database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Temporary files
+_temp_*
+*.tmp
+*.temp
+
+# IDE
+.project
+.settings
+.classpath
+*.launch
+.vscode-test
