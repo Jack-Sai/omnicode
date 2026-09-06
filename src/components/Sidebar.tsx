@@ -67,21 +67,12 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
       >
         {/* 品牌区 */}
       <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-line px-3">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-[13px] font-bold text-accent-solid">
-          O
-        </div>
+        <img src="/logo.png" alt="Omni Code" className="h-7 w-7 shrink-0 rounded-md" />
         {!sidebarCollapsed && (
           <span className="flex-1 truncate text-sm font-semibold tracking-tight text-fg">
             Omni Code
           </span>
         )}
-        <IconButton
-          label={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
-          size="sm"
-          onClick={toggleSidebar}
-        >
-          {sidebarCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
-        </IconButton>
       </div>
 
       {/* 新建对话 */}
@@ -220,8 +211,15 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
             )}
           >
             <Settings size={15} className="shrink-0" />
-            {!sidebarCollapsed && <span>设置</span>}
           </button>
+          <IconButton
+            label={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
+            size="sm"
+            onClick={toggleSidebar}
+            className={cn(!sidebarCollapsed && 'flex-1')}
+          >
+            {sidebarCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
+          </IconButton>
         </div>
       </div>
     </aside>
