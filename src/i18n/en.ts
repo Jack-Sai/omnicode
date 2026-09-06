@@ -15,6 +15,11 @@ export const en: Record<string, string> = {
   'auth.demo_user': 'Demo User',
   'auth.error.prefix': 'Error: ',
 
+  // === Theme ===
+  'theme.light': 'Light',
+  'theme.dark': 'Dark',
+  'theme.system': 'System',
+
   // === Sidebar ===
   'sidebar.new_chat': 'New Chat',
   'sidebar.conversation_list': 'Conversations',

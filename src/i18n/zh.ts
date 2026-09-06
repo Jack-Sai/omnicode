@@ -15,6 +15,11 @@ export const zh: Record<string, string> = {
   'auth.demo_user': 'Demo 用户',
   'auth.error.prefix': '操作失败: ',
 
+  // === Theme ===
+  'theme.light': '浅色',
+  'theme.dark': '深色',
+  'theme.system': '跟随系统',
+
   // === Sidebar ===
   'sidebar.new_chat': '新对话',
   'sidebar.conversation_list': '对话列表',
