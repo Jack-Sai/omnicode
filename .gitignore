@@ -83,3 +83,6 @@ _temp_*
 # Project specific
 .workbuddy/
 Omni Code.md
+
+# Opencode memory
+.opencode/

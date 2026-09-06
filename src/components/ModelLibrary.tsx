@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus, Trash2, Check, Wifi, Settings2, Cpu, Cloud, HardDrive } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../store/useAppStore';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '../lib/cn';
@@ -39,11 +40,11 @@ const STATUS_DOT: Record<Model['status'], DotTone> = {
 
 const emptyForm = {
   name: '',
-  provider: 'openai',
-  endpoint: PROVIDERS[0].endpoint,
+  provider: 'zhipu',
+  endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
   apiKey: '',
-  modelIdentifier: '',
-  contextLength: 4096,
+  modelIdentifier: 'glm-4.7-flash',
+  contextLength: 128000,
   temperature: 0.7,
   sourceType: 'api' as 'api' | 'local',
 };
@@ -110,11 +111,18 @@ export function ModelLibrary() {
     setEditingModel(null);
   };
 
-  const testConnection = (model: Model) => {
+  const testConnection = async (model: Model) => {
     updateModel(model.id, { status: 'checking' });
-    setTimeout(() => {
-      updateModel(model.id, { status: Math.random() > 0.3 ? 'online' : 'offline' });
-    }, 1000);
+    try {
+      const result = await invoke<boolean>('test_model_connection', {
+        endpoint: model.endpoint,
+        apiKey: model.apiKey || null,
+        model: model.modelIdentifier,
+      });
+      updateModel(model.id, { status: result ? 'online' : 'offline' });
+    } catch {
+      updateModel(model.id, { status: 'offline' });
+    }
   };
 
   return (

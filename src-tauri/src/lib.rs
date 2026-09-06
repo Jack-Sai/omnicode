@@ -10,6 +10,16 @@ use llm::LlmState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 初始化日志（默认 debug 级别，可通过 RUST_LOG 环境变量覆盖）
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("debug")),
+        )
+        .init();
+
+    tracing::info!("Omni Code v{} starting up", env!("CARGO_PKG_VERSION"));
+
     // 初始化数据库
     let db_path = dirs::data_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
