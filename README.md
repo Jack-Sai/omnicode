@@ -1,6 +1,20 @@
-# Omni Code
+<p align="center">
+  <img src="./logo.png" alt="Omni Code Logo" width="128">
+</p>
 
-**为代码而生的本地智能体**
+<h1 align="center">Omni Code</h1>
+
+<p align="center"><strong>为代码而生的本地智能体</strong></p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-v1.0.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-0078D6" alt="Platform">
+  <img src="https://img.shields.io/badge/Tauri-v2-24C8DB?logo=tauri" alt="Tauri">
+  <img src="https://img.shields.io/badge/Rust-2024-000000?logo=rust" alt="Rust">
+  <img src="https://img.shields.io/badge/OpenAI-支持-412991?logo=openai" alt="OpenAI">
+  <img src="https://img.shields.io/badge/本地部署-支持-FF6B00" alt="Local">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+</p>
 
 Omni Code 是一款面向编程场景的 AI 智能体桌面应用。用户通过自然语言描述目标，Agent 自主规划、调用工具、编写并执行代码。
 
