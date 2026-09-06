@@ -256,6 +256,15 @@ impl Database {
                 completed_at TEXT,
                 FOREIGN KEY (task_id) REFERENCES tasks(id)
             );
+
+            CREATE TABLE IF NOT EXISTS user_settings (
+                user_id TEXT NOT NULL,
+                key TEXT NOT NULL,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, key),
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            );
             "
         )?;
 
@@ -1070,4 +1079,45 @@ pub fn get_tasks(
         .map_err(|e| e.to_string())?;
     
     Ok(tasks)
+}
+
+/// 保存应用设置到本地数据库
+#[tauri::command]
+pub fn save_settings(
+    state: State<'_, Database>,
+    user_id: Option<String>,
+    settings: serde_json::Value,
+) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let uid = user_id.unwrap_or_else(|| "demo-user".to_string());
+    let value = settings.to_string();
+
+    conn.execute(
+        "INSERT INTO user_settings (user_id, key, value, updated_at) VALUES (?1, 'app_settings', ?2, datetime('now'))
+         ON CONFLICT(user_id, key) DO UPDATE SET value = ?2, updated_at = datetime('now')",
+        params![uid, value],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// 从本地数据库读取应用设置
+#[tauri::command]
+pub fn get_settings(
+    state: State<'_, Database>,
+    user_id: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let uid = user_id.unwrap_or_else(|| "demo-user".to_string());
+
+    match conn.query_row(
+        "SELECT value FROM user_settings WHERE user_id = ?1 AND key = 'app_settings'",
+        params![uid],
+        |row| row.get::<_, String>(0),
+    ) {
+        Ok(v) => serde_json::from_str::<serde_json::Value>(&v).map_err(|e| e.to_string()),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(serde_json::json!({})),
+        Err(e) => Err(e.to_string()),
+    }
 }

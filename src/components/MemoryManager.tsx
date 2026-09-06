@@ -1,8 +1,23 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Plus, Trash2, Search, Brain, Clock, Star } from 'lucide-react';
+import { Plus, Trash2, Search, Brain } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  IconButton,
+  Input,
+  Modal,
+  Page,
+  PageHeader,
+  Select,
+  Textarea,
+  type BadgeTone,
+} from './ui';
 
 interface Memory {
   id: string;
@@ -16,18 +31,48 @@ interface Memory {
   metadata: string | null;
 }
 
+const TYPE_TONE: Record<string, BadgeTone> = {
+  short: 'accent',
+  long: 'info',
+  success: 'success',
+  failure: 'danger',
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  short: '短期',
+  long: '长期',
+  success: '成功',
+  failure: '失败',
+};
+
+const FILTERS = [
+  { id: 'all', name: '全部' },
+  { id: 'short', name: '短期' },
+  { id: 'long', name: '长期' },
+  { id: 'success', name: '成功' },
+  { id: 'failure', name: '失败' },
+];
+
+const emptyForm = { content: '', memory_type: 'short', importance: 0.5 };
+
+function formatDate(dateStr: string) {
+  const date = new Date(dateStr);
+  const diff = Date.now() - date.getTime();
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  if (hours < 1) return '刚刚';
+  if (hours < 24) return `${hours} 小时前`;
+  if (days < 7) return `${days} 天前`;
+  return date.toLocaleDateString('zh-CN');
+}
+
 export function MemoryManager() {
   const { currentUser } = useAppStore();
   const [memories, setMemories] = useState<Memory[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
-
-  const [formData, setFormData] = useState({
-    content: '',
-    memory_type: 'short',
-    importance: 0.5,
-  });
+  const [filterType, setFilterType] = useState('all');
+  const [formData, setFormData] = useState(emptyForm);
 
   const loadMemories = async () => {
     if (!currentUser) return;
@@ -48,7 +93,8 @@ export function MemoryManager() {
   }, [currentUser, filterType]);
 
   const handleSearch = async () => {
-    if (!currentUser || !searchQuery.trim()) {
+    if (!currentUser) return;
+    if (!searchQuery.trim()) {
       loadMemories();
       return;
     }
@@ -66,7 +112,6 @@ export function MemoryManager() {
 
   const handleAddMemory = async () => {
     if (!currentUser || !formData.content.trim()) return;
-
     const memory: Memory = {
       id: uuidv4(),
       user_id: currentUser.id,
@@ -78,11 +123,10 @@ export function MemoryManager() {
       last_accessed: null,
       metadata: null,
     };
-
     try {
       await invoke('add_memory', { memory });
       setShowAddModal(false);
-      setFormData({ content: '', memory_type: 'short', importance: 0.5 });
+      setFormData(emptyForm);
       loadMemories();
     } catch (error) {
       console.error('添加记忆失败:', error);
@@ -98,212 +142,163 @@ export function MemoryManager() {
     }
   };
 
-  const memoryTypes = [
-    { id: 'all', name: '全部', icon: <Brain size={16} /> },
-    { id: 'short', name: '短期记忆', icon: <Clock size={16} /> },
-    { id: 'long', name: '长期记忆', icon: <Star size={16} /> },
-    { id: 'success', name: '成功经验', icon: <span className="text-green-500">✓</span> },
-    { id: 'failure', name: '失败教训', icon: <span className="text-red-500">✗</span> },
-  ];
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-
-    if (hours < 1) return '刚刚';
-    if (hours < 24) return `${hours} 小时前`;
-    if (days < 7) return `${days} 天前`;
-    return date.toLocaleDateString('zh-CN');
-  };
-
   return (
-    <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">记忆系统</h1>
-            <p className="text-sm text-gray-500 mt-1">管理和检索你的知识库</p>
-          </div>
-          <button
+    <Page>
+      <PageHeader
+        title="记忆系统"
+        description="Agent 沉淀的长期知识与经验，可检索、可编辑。"
+        actions={
+          <Button
+            variant="primary"
+            icon={<Plus size={15} />}
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
           >
-            <Plus size={18} />
-            <span>添加记忆</span>
-          </button>
+            添加记忆
+          </Button>
+        }
+        className="mb-6"
+      />
+
+      {/* 搜索与筛选 */}
+      <Card className="mb-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            leadingIcon={<Search size={14} />}
+            placeholder="搜索记忆内容…"
+          />
+          <Button variant="secondary" onClick={handleSearch} className="shrink-0">
+            搜索
+          </Button>
         </div>
 
-        {/* Search and Filter */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="搜索记忆..."
-              />
-            </div>
-            <button
-              onClick={handleSearch}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              搜索
-            </button>
-          </div>
-
-          {/* Type Filter */}
-          <div className="flex gap-2 mt-3">
-            {memoryTypes.map((type) => (
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map((type) => {
+            const active = filterType === type.id;
+            return (
               <button
                 key={type.id}
                 onClick={() => setFilterType(type.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  filterType === type.id
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                className={
+                  active
+                    ? 'inline-flex h-7 items-center rounded-full border border-accent-line bg-accent-subtle px-3 text-xs font-medium text-accent transition-colors'
+                    : 'inline-flex h-7 items-center rounded-full border border-line bg-surface px-3 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg-secondary'
+                }
               >
-                {type.icon}
                 {type.name}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
+      </Card>
 
-        {/* Memories List */}
-        {memories.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
-            <div className="text-5xl mb-4">🧠</div>
-            <h3 className="text-lg font-medium text-gray-800 mb-2">暂无记忆</h3>
-            <p className="text-gray-500 mb-4">添加重要信息到记忆库</p>
-            <button
+      {memories.length === 0 ? (
+        <EmptyState
+          icon={<Brain size={20} />}
+          title="暂无记忆"
+          description="把项目约定、偏好或踩过的坑写进记忆库，Agent 会自动检索使用。"
+          action={
+            <Button
+              variant="primary"
+              icon={<Plus size={15} />}
               onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               添加第一条记忆
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {memories.map((memory) => (
-              <div
-                key={memory.id}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-gray-800 whitespace-pre-wrap">{memory.content}</p>
-                    <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
-                      <span className={`px-2 py-0.5 rounded-full ${
-                        memory.memory_type === 'short'
-                          ? 'bg-blue-100 text-blue-600'
-                          : memory.memory_type === 'long'
-                          ? 'bg-purple-100 text-purple-600'
-                          : memory.memory_type === 'success'
-                          ? 'bg-green-100 text-green-600'
-                          : 'bg-red-100 text-red-600'
-                      }`}>
-                        {memory.memory_type === 'short'
-                          ? '短期'
-                          : memory.memory_type === 'long'
-                          ? '长期'
-                          : memory.memory_type === 'success'
-                          ? '成功'
-                          : '失败'}
-                      </span>
-                      <span>重要性: {(memory.importance * 100).toFixed(0)}%</span>
-                      <span>访问 {memory.access_count} 次</span>
-                      <span>{formatDate(memory.created_at)}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteMemory(memory.id)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Add Memory Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">添加记忆</h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">内容</label>
-                <textarea
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={4}
-                  placeholder="输入要记住的内容..."
-                />
+            </Button>
+          }
+        />
+      ) : (
+        <div className="space-y-3">
+          {memories.map((memory) => (
+            <Card key={memory.id}>
+              <div className="flex items-start gap-3">
+                <p className="min-w-0 flex-1 whitespace-pre-wrap text-sm leading-relaxed text-fg">
+                  {memory.content}
+                </p>
+                <IconButton
+                  label="删除记忆"
+                  size="sm"
+                  className="shrink-0 text-fg-muted hover:bg-danger-subtle hover:text-danger"
+                  onClick={() => handleDeleteMemory(memory.id)}
+                >
+                  <Trash2 size={14} />
+                </IconButton>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">类型</label>
-                  <select
-                    value={formData.memory_type}
-                    onChange={(e) => setFormData({ ...formData, memory_type: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="short">短期记忆</option>
-                    <option value="long">长期记忆</option>
-                    <option value="success">成功经验</option>
-                    <option value="failure">失败教训</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    重要性: {(formData.importance * 100).toFixed(0)}%
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={formData.importance}
-                    onChange={(e) => setFormData({ ...formData, importance: parseFloat(e.target.value) })}
-                    className="w-full mt-2"
-                  />
-                </div>
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-fg-muted">
+                <Badge tone={TYPE_TONE[memory.memory_type] || 'neutral'}>
+                  {TYPE_LABEL[memory.memory_type] || memory.memory_type}
+                </Badge>
+                <span>重要性 {(memory.importance * 100).toFixed(0)}%</span>
+                <span>访问 {memory.access_count} 次</span>
+                <span>{formatDate(memory.created_at)}</span>
               </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleAddMemory}
-                disabled={!formData.content.trim()}
-                className="flex-1 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                添加
-              </button>
-            </div>
-          </div>
+            </Card>
+          ))}
         </div>
       )}
-    </div>
+
+      <Modal
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        title="添加记忆"
+        description="写入后 Agent 可在后续任务中检索到这条内容。"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowAddModal(false)}>
+              取消
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleAddMemory}
+              disabled={!formData.content.trim()}
+            >
+              添加
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Field label="内容">
+            <Textarea
+              value={formData.content}
+              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+              rows={4}
+              placeholder="输入要记住的内容…"
+            />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="类型">
+              <Select
+                value={formData.memory_type}
+                onChange={(e) => setFormData({ ...formData, memory_type: e.target.value })}
+              >
+                <option value="short">短期记忆</option>
+                <option value="long">长期记忆</option>
+                <option value="success">成功经验</option>
+                <option value="failure">失败教训</option>
+              </Select>
+            </Field>
+
+            <Field label={`重要性：${(formData.importance * 100).toFixed(0)}%`}>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={formData.importance}
+                onChange={(e) =>
+                  setFormData({ ...formData, importance: parseFloat(e.target.value) })
+                }
+                className="mt-2.5 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-inset accent-accent"
+              />
+            </Field>
+          </div>
+        </div>
+      </Modal>
+    </Page>
   );
 }

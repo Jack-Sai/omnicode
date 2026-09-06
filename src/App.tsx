@@ -8,15 +8,16 @@ import { AuthPage } from './components/AuthPage';
 import { PluginManager } from './components/PluginManager';
 import { MemoryManager } from './components/MemoryManager';
 import { useAppStore } from './store/useAppStore';
-import './App.css';
+import { useThemeEffect } from './lib/theme';
 
 type Page = 'chat' | 'models' | 'history' | 'settings' | 'plugins' | 'memory';
 
 function App() {
-  const { currentUser, authToken } = useAppStore();
+  const { currentUser, authToken, settings } = useAppStore();
   const [currentPage, setCurrentPage] = useState<Page>('chat');
 
-  // 如果未登录，显示登录页面
+  useThemeEffect(settings.theme);
+
   if (!currentUser || !authToken) {
     return <AuthPage />;
   }
@@ -41,11 +42,9 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-screen w-screen overflow-hidden bg-app text-fg">
       <Sidebar onNavigate={setCurrentPage} currentPage={currentPage} />
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {renderPage()}
-      </main>
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">{renderPage()}</main>
     </div>
   );
 }

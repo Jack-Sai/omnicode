@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import {
-  Folder,
-  File,
-  ChevronRight,
-  ChevronDown,
-  Home,
-  RefreshCw,
-  Search,
-} from 'lucide-react';
+import { Folder, File, ChevronRight, ChevronDown, Home, RefreshCw, Search } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { cn } from '../lib/cn';
+import { Card, IconButton, Input } from './ui';
 
 interface FileInfo {
   name: string;
@@ -55,151 +49,126 @@ export function FileExplorer({ onSelect, mode = 'browse' }: FileExplorerProps) {
     loadDirectory(currentPath);
   }, []);
 
-  const handleRefresh = () => {
-    loadDirectory(currentPath);
-  };
-
+  const handleRefresh = () => loadDirectory(currentPath);
   const handleGoUp = () => {
     const parent = currentPath.split('/').slice(0, -1).join('/') || '/';
     loadDirectory(parent);
   };
-
-  const handleGoHome = () => {
-    loadDirectory(settings.workspacePath || '~');
-  };
-
+  const handleGoHome = () => loadDirectory(settings.workspacePath || '~');
   const handleFileClick = (file: FileInfo) => {
-    if (file.is_dir) {
-      loadDirectory(file.path);
-    } else if (onSelect) {
-      onSelect(file.path);
-    }
+    if (file.is_dir) loadDirectory(file.path);
+    else if (onSelect) onSelect(file.path);
   };
-
   const toggleExpand = (path: string) => {
-    const newExpanded = new Set(expandedDirs);
-    if (newExpanded.has(path)) {
-      newExpanded.delete(path);
-    } else {
-      newExpanded.add(path);
-    }
-    setExpandedDirs(newExpanded);
+    const next = new Set(expandedDirs);
+    if (next.has(path)) next.delete(path);
+    else next.add(path);
+    setExpandedDirs(next);
   };
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
   };
 
-  const filteredFiles = files.filter((file) =>
-    file.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredFiles = files.filter((f) =>
+    f.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="flex flex-col h-full bg-white border border-gray-200 rounded-lg">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 p-2 border-b border-gray-200">
-        <button
-          onClick={handleGoHome}
-          className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-          title="回到工作区"
+    <Card padding="none" className="flex h-full flex-col overflow-hidden">
+      {/* 工具栏 */}
+      <div className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-2">
+        <IconButton label="回到工作区" size="sm" onClick={handleGoHome}>
+          <Home size={14} />
+        </IconButton>
+        <IconButton label="上级目录" size="sm" onClick={handleGoUp}>
+          <ChevronRight size={14} className="rotate-180" />
+        </IconButton>
+        <IconButton label="刷新" size="sm" onClick={handleRefresh}>
+          <RefreshCw size={14} className={cn(loading && 'animate-spin')} />
+        </IconButton>
+
+        <span
+          className="min-w-0 flex-1 truncate px-1 font-mono text-[11px] text-fg-muted"
+          title={currentPath}
         >
-          <Home size={16} />
-        </button>
-        <button
-          onClick={handleGoUp}
-          className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-          title="上级目录"
-        >
-          <ChevronRight size={16} className="rotate-180" />
-        </button>
-        <button
-          onClick={handleRefresh}
-          className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-          title="刷新"
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-        </button>
-        
-        <div className="flex-1 px-2 text-sm text-gray-600 truncate" title={currentPath}>
           {currentPath}
-        </div>
-        
-        <div className="relative">
-          <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索..."
-            className="pl-7 pr-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 w-32"
-          />
-        </div>
+        </span>
+
+        <Input
+          inputSize="sm"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="搜索…"
+          leadingIcon={<Search size={13} />}
+          className="w-32 shrink-0"
+        />
       </div>
 
-      {/* File List */}
-      <div className="flex-1 overflow-y-auto">
+      {/* 文件列表 */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center h-32 text-gray-500">
-            <RefreshCw size={20} className="animate-spin mr-2" />
-            加载中...
+          <div className="flex h-32 items-center justify-center gap-2 text-xs text-fg-muted">
+            <RefreshCw size={14} className="animate-spin" />
+            加载中…
           </div>
         ) : filteredFiles.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-gray-500">
-            <Folder size={32} className="mb-2" />
-            <p className="text-sm">空目录</p>
+          <div className="flex h-32 flex-col items-center justify-center gap-2 text-fg-muted">
+            <Folder size={24} />
+            <p className="text-xs">空目录</p>
           </div>
         ) : (
-          <div className="py-1">
+          <ul className="py-1">
             {filteredFiles.map((file) => (
-              <div
-                key={file.path}
-                onClick={() => handleFileClick(file)}
-                className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${
-                  file.is_dir
-                    ? 'hover:bg-blue-50'
-                    : 'hover:bg-gray-50'
-                } ${mode === 'select' && file.is_file ? 'hover:bg-blue-100' : ''}`}
-              >
-                {file.is_dir ? (
-                  <>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleExpand(file.path);
-                      }}
-                      className="p-0.5 text-gray-400"
-                    >
-                      {expandedDirs.has(file.path) ? (
-                        <ChevronDown size={14} />
-                      ) : (
-                        <ChevronRight size={14} />
-                      )}
-                    </button>
-                    <Folder size={16} className="text-blue-500" />
-                  </>
-                ) : (
-                  <>
-                    <span className="w-[14px]" />
-                    <File size={16} className="text-gray-500" />
-                  </>
-                )}
-                
-                <span className="flex-1 text-sm truncate text-gray-700">
-                  {file.name}
-                </span>
-                
-                {file.is_file && (
-                  <span className="text-xs text-gray-400">
-                    {formatSize(file.size)}
-                  </span>
-                )}
-              </div>
+              <li key={file.path}>
+                <div
+                  onClick={() => handleFileClick(file)}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs transition-colors duration-150',
+                    'hover:bg-surface-hover',
+                    mode === 'select' && file.is_file && 'hover:bg-accent-subtle'
+                  )}
+                >
+                  {file.is_dir ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpand(file.path);
+                        }}
+                        className="shrink-0 text-fg-muted"
+                      >
+                        {expandedDirs.has(file.path) ? (
+                          <ChevronDown size={12} />
+                        ) : (
+                          <ChevronRight size={12} />
+                        )}
+                      </button>
+                      <Folder size={14} className="shrink-0 text-accent" />
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-3 shrink-0" />
+                      <File size={14} className="shrink-0 text-fg-muted" />
+                    </>
+                  )}
+
+                  <span className="min-w-0 flex-1 truncate text-fg-secondary">{file.name}</span>
+
+                  {file.is_file && (
+                    <span className="shrink-0 font-mono text-[10px] text-fg-muted">
+                      {formatSize(file.size)}
+                    </span>
+                  )}
+                </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

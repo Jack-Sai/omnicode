@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { User, Lock, Phone, UserPlus, LogIn } from 'lucide-react';
+import { User, Lock, Phone, UserPlus, LogIn, Sun, Moon } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { resolveTheme } from '../lib/theme';
+import { Button, Card, Field, IconButton, Input } from './ui';
 
 interface AuthUser {
   id: string;
@@ -18,14 +20,23 @@ interface AuthResponse {
   token: string | null;
 }
 
+type Mode = 'login' | 'register';
+
 export function AuthPage() {
-  const { setCurrentUser, setAuthToken } = useAppStore();
-  const [isLogin, setIsLogin] = useState(true);
+  const { setCurrentUser, setAuthToken, settings, updateSettings } = useAppStore();
+  const [mode, setMode] = useState<Mode>('login');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const isDark = resolveTheme(settings.theme) === 'dark';
+
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,17 +44,12 @@ export function AuthPage() {
     setLoading(true);
 
     try {
-      let response: AuthResponse;
-
-      if (isLogin) {
-        response = await invoke<AuthResponse>('login_user', {
-          request: { phone, password },
-        });
-      } else {
-        response = await invoke<AuthResponse>('register_user', {
-          request: { phone, password, display_name: displayName },
-        });
-      }
+      const response: AuthResponse =
+        mode === 'login'
+          ? await invoke<AuthResponse>('login_user', { request: { phone, password } })
+          : await invoke<AuthResponse>('register_user', {
+              request: { phone, password, display_name: displayName },
+            });
 
       if (response.success && response.user && response.token) {
         setCurrentUser(response.user);
@@ -58,150 +64,130 @@ export function AuthPage() {
     }
   };
 
+  const useDemoAccount = () => {
+    setCurrentUser({
+      id: 'demo-user',
+      phone: '13800138000',
+      display_name: 'Demo 用户',
+      created_at: new Date().toISOString(),
+      last_login: null,
+    });
+    setAuthToken('demo-token');
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-500 rounded-2xl mb-4">
-            <span className="text-3xl">🤖</span>
+    <div className="flex h-full w-full items-center justify-center overflow-y-auto bg-app p-4">
+      <div className="w-full max-w-sm">
+        {/* 品牌 */}
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-accent text-base font-bold text-accent-solid shadow-sm">
+            O
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Omni Code</h1>
-          <p className="text-gray-500 mt-1">为代码而生的本地智能体</p>
+          <h1 className="text-lg font-semibold tracking-tight text-fg">Omni Code</h1>
+          <p className="mt-1 text-sm text-fg-muted">为代码而生的本地智能体</p>
         </div>
 
-        {/* Auth Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-6">
-          {/* Tab Switch */}
-          <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => {
-                setIsLogin(true);
-                setError('');
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
-                isLogin
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+        <Card padding="lg" className="shadow-md">
+          {/* 登录 / 注册切换 */}
+          <div className="relative z-0 mb-5 overflow-hidden rounded-md bg-surface p-1">
+            {/* 滑动的激活指示块 */}
+            <span
+              className={`absolute inset-y-1 left-1 z-0 w-[calc(50%-4px)] rounded-md bg-accent shadow-sm transition-transform duration-300 ease-out ${
+                mode === 'register' ? 'translate-x-full' : ''
               }`}
-            >
-              <LogIn size={16} />
-              登录
-            </button>
-            <button
-              onClick={() => {
-                setIsLogin(false);
-                setError('');
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
-                !isLogin
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <UserPlus size={16} />
-              注册
-            </button>
+            />
+            <div className="relative z-10 flex">
+              <button
+                type="button"
+                onClick={() => switchMode('login')}
+                className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-150 ${
+                  mode === 'login' ? 'text-accent-solid' : 'text-fg-secondary hover:text-fg'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <LogIn size={14} />
+                  登录
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode('register')}
+                className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-150 ${
+                  mode === 'register' ? 'text-accent-solid' : 'text-fg-secondary hover:text-fg'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <UserPlus size={14} />
+                  注册
+                </span>
+              </button>
+            </div>
           </div>
 
-          {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+            <p className="mb-4 rounded-md border border-danger-line bg-danger-subtle px-3 py-2 text-xs text-danger">
               {error}
-            </div>
+            </p>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Phone */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">手机号</label>
-              <div className="relative">
-                <Phone
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="请输入手机号"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            <Field label="手机号">
+              <Input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="请输入手机号"
+                leadingIcon={<Phone size={14} />}
+                required
+              />
+            </Field>
+
+            {mode === 'register' && (
+              <Field label="显示名称">
+                <Input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="请输入显示名称"
+                  leadingIcon={<User size={14} />}
                   required
                 />
-              </div>
-            </div>
-
-            {/* Display Name (Register only) */}
-            {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">显示名称</label>
-                <div className="relative">
-                  <User
-                    size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="请输入显示名称"
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-              </div>
+              </Field>
             )}
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">密码</label>
-              <div className="relative">
-                <Lock
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="请输入密码"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                  minLength={6}
-                />
-              </div>
-            </div>
+            <Field label="密码" hint={mode === 'register' ? '至少 6 位' : undefined}>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="请输入密码"
+                leadingIcon={<Lock size={14} />}
+                required
+                minLength={6}
+              />
+            </Field>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? '处理中...' : isLogin ? '登录' : '注册'}
-            </button>
+            <Button type="submit" variant="primary" block disabled={loading}>
+              {loading ? '处理中…' : mode === 'login' ? '登录' : '注册'}
+            </Button>
           </form>
 
-          {/* Demo Mode */}
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <button
-              onClick={() => {
-                // 跳过登录，直接进入 demo 模式
-                setCurrentUser({
-                  id: 'demo-user',
-                  phone: '13800138000',
-                  display_name: 'Demo 用户',
-                  created_at: new Date().toISOString(),
-                  last_login: null,
-                });
-                setAuthToken('demo-token');
-              }}
-              className="w-full py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
-            >
+          <div className="mt-5 border-t border-line pt-4">
+            <Button variant="ghost" block onClick={useDemoAccount}>
               跳过登录，直接体验
-            </button>
+            </Button>
           </div>
+        </Card>
+
+        {/* 主题开关 */}
+        <div className="mt-4 flex justify-center">
+          <IconButton
+            label={isDark ? '切换到浅色' : '切换到深色'}
+            size="sm"
+            onClick={() => updateSettings({ theme: isDark ? 'light' : 'dark' })}
+          >
+            {isDark ? <Sun size={15} /> : <Moon size={15} />}
+          </IconButton>
         </div>
       </div>
     </div>

@@ -102,8 +102,6 @@ pub fn git_status(path: String) -> Result<ToolResult, String> {
 
         if status.starts_with('M') || status.starts_with('A') || status.starts_with('D') {
             staged.push(git_file);
-        } else if status.starts_with('M') || status.starts_with('D') {
-            modified.push(git_file);
         } else if status.starts_with('?') {
             untracked.push(git_file);
         }

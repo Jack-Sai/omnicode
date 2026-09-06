@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Check, X, AlertTriangle, File, Terminal, Trash2, Edit } from 'lucide-react';
+import { Check, X, AlertTriangle, File, Terminal, Edit, ShieldCheck } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { Badge, Button, Card, CardHeader, CodeBlock, type BadgeTone } from './ui';
 
 export type RiskLevel = 'low' | 'medium' | 'high';
 
@@ -19,23 +20,23 @@ interface ApprovalCardProps {
   onModify?: (id: string, newParams: Record<string, unknown>) => void;
 }
 
-const riskColors: Record<RiskLevel, { bg: string; text: string; border: string }> = {
-  low: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-  medium: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
-  high: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+const RISK_TONE: Record<RiskLevel, BadgeTone> = {
+  low: 'success',
+  medium: 'warning',
+  high: 'danger',
 };
 
-const riskLabels: Record<RiskLevel, string> = {
+const RISK_LABEL: Record<RiskLevel, string> = {
   low: '低风险',
   medium: '中风险',
   high: '高风险',
 };
 
-const toolIcons: Record<string, React.ReactNode> = {
-  read_file: <File size={16} />,
-  write_file: <Edit size={16} />,
-  delete_file: <Trash2 size={16} />,
-  execute_shell: <Terminal size={16} />,
+const TOOL_ICONS: Record<string, React.ReactNode> = {
+  read_file: <File size={14} />,
+  write_file: <Edit size={14} />,
+  delete_file: <X size={14} />,
+  execute_shell: <Terminal size={14} />,
 };
 
 export function ApprovalCard({ toolCall, onApprove, onReject, onModify }: ApprovalCardProps) {
@@ -43,112 +44,100 @@ export function ApprovalCard({ toolCall, onApprove, onReject, onModify }: Approv
   const [editing, setEditing] = useState(false);
   const [editedParams, setEditedParams] = useState(JSON.stringify(toolCall.params, null, 2));
 
-  const colors = riskColors[toolCall.riskLevel];
+  const tone = RISK_TONE[toolCall.riskLevel];
 
   const handleSaveEdit = () => {
     try {
-      const newParams = JSON.parse(editedParams);
-      onModify?.(toolCall.id, newParams);
+      onModify?.(toolCall.id, JSON.parse(editedParams));
       setEditing(false);
-    } catch (e) {
+    } catch {
       alert('JSON 格式错误');
     }
   };
 
   return (
-    <div className={`border ${colors.border} rounded-lg overflow-hidden`}>
-      {/* Header */}
-      <div className={`${colors.bg} px-4 py-2 flex items-center justify-between`}>
-        <div className="flex items-center gap-2">
-          {toolIcons[toolCall.toolName] || <File size={16} />}
-          <span className="font-medium text-gray-800">{toolCall.toolName}</span>
-          <span className={`text-xs px-2 py-0.5 rounded-full ${colors.bg} ${colors.text} border ${colors.border}`}>
-            {riskLabels[toolCall.riskLevel]}
+    <Card padding="none" className="overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-fg-muted">
+            {TOOL_ICONS[toolCall.toolName] || <File size={14} />}
           </span>
+          <span className="truncate font-mono text-xs font-medium text-fg">
+            {toolCall.toolName}
+          </span>
+          <Badge tone={tone}>{RISK_LABEL[toolCall.riskLevel]}</Badge>
         </div>
         {toolCall.riskLevel === 'high' && (
-          <AlertTriangle size={16} className="text-red-500" />
+          <AlertTriangle size={14} className="shrink-0 text-danger" />
         )}
       </div>
 
-      {/* Description */}
-      <div className="px-4 py-3 border-t border-gray-100">
-        <p className="text-sm text-gray-600">{toolCall.description}</p>
-      </div>
+      <p className="px-4 py-3 text-xs leading-relaxed text-fg-secondary">{toolCall.description}</p>
 
-      {/* Params Toggle */}
-      <div className="px-4 pb-2">
+      <div className="px-4 pb-3">
         <button
+          type="button"
           onClick={() => setShowParams(!showParams)}
-          className="text-xs text-gray-500 hover:text-gray-700"
+          className="text-[11px] font-medium text-fg-muted transition-colors hover:text-fg"
         >
           {showParams ? '隐藏参数' : '查看参数'}
         </button>
       </div>
 
-      {/* Params */}
       {showParams && (
         <div className="px-4 pb-3">
           {editing ? (
-            <div>
+            <div className="space-y-2">
               <textarea
                 value={editedParams}
                 onChange={(e) => setEditedParams(e.target.value)}
-                className="w-full h-32 p-2 text-xs font-mono border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                rows={6}
+                className="w-full rounded-md border border-line bg-inset p-2.5 font-mono text-xs text-fg outline-none focus:border-accent focus:shadow-[var(--shadow-focus)]"
               />
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={handleSaveEdit}
-                  className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
+              <div className="flex gap-2">
+                <Button variant="primary" size="sm" onClick={handleSaveEdit}>
                   保存
-                </button>
-                <button
-                  onClick={() => setEditing(false)}
-                  className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
-                >
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>
                   取消
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
-            <pre className="p-2 text-xs bg-gray-50 rounded overflow-x-auto">
-              {JSON.stringify(toolCall.params, null, 2)}
-            </pre>
+            <CodeBlock>{JSON.stringify(toolCall.params, null, 2)}</CodeBlock>
           )}
         </div>
       )}
 
-      {/* Actions */}
-      <div className="px-4 py-3 border-t border-gray-100 flex gap-2">
-        <button
+      <div className="flex gap-2 border-t border-line px-4 py-3">
+        <Button
+          variant="success"
+          size="sm"
+          icon={<Check size={14} />}
+          className="flex-1"
           onClick={() => onApprove(toolCall.id)}
-          className="flex-1 flex items-center justify-center gap-2 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
         >
-          <Check size={16} />
           批准
-        </button>
+        </Button>
         {onModify && (
-          <button
-            onClick={() => setEditing(true)}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
+          <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
             修改参数
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          variant="danger"
+          size="sm"
+          icon={<X size={14} />}
+          className="flex-1"
           onClick={() => onReject(toolCall.id)}
-          className="flex-1 flex items-center justify-center gap-2 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
         >
-          <X size={16} />
           拒绝
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
-// 审批队列组件
 interface ApprovalQueueProps {
   toolCalls: ToolCall[];
   onApprove: (id: string) => void;
@@ -167,23 +156,21 @@ export function ApprovalQueue({
   onRejectAll,
 }: ApprovalQueueProps) {
   const { settings } = useAppStore();
-
-  if (toolCalls.length === 0) {
-    return null;
-  }
+  if (toolCalls.length === 0) return null;
 
   const hasHighRisk = toolCalls.some((tc) => tc.riskLevel === 'high');
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-medium text-gray-800">
-          待审批操作 ({toolCalls.length})
-        </h3>
-        {settings.executionMode === 'auto' && !hasHighRisk && (
-          <span className="text-xs text-gray-500">自动审批模式</span>
-        )}
-      </div>
+    <Card padding="lg">
+      <CardHeader
+        title={`待审批操作（${toolCalls.length}）`}
+        actions={
+          settings.executionMode === 'auto' && !hasHighRisk ? (
+            <Badge tone="info">自动审批模式</Badge>
+          ) : undefined
+        }
+        className="mb-4"
+      />
 
       <div className="space-y-3">
         {toolCalls.map((tc) => (
@@ -197,25 +184,32 @@ export function ApprovalQueue({
         ))}
       </div>
 
-      {/* Batch Actions */}
-      <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
-        {onApproveAll && (
-          <button
-            onClick={onApproveAll}
-            className="flex-1 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-          >
-            全部批准
-          </button>
-        )}
-        {onRejectAll && (
-          <button
-            onClick={onRejectAll}
-            className="flex-1 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-          >
-            全部拒绝
-          </button>
-        )}
-      </div>
-    </div>
+      {(onApproveAll || onRejectAll) && (
+        <div className="mt-4 flex gap-2 border-t border-line pt-4">
+          {onApproveAll && (
+            <Button
+              variant="success"
+              size="sm"
+              icon={<ShieldCheck size={14} />}
+              className="flex-1"
+              onClick={onApproveAll}
+            >
+              全部批准
+            </Button>
+          )}
+          {onRejectAll && (
+            <Button
+              variant="danger"
+              size="sm"
+              icon={<X size={14} />}
+              className="flex-1"
+              onClick={onRejectAll}
+            >
+              全部拒绝
+            </Button>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }

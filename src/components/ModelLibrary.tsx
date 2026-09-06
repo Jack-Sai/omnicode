@@ -1,41 +1,86 @@
 import { useState } from 'react';
-import { Plus, Trash2, Check, Wifi, WifiOff, Settings2 } from 'lucide-react';
+import { Plus, Trash2, Check, Wifi, Settings2, Cpu, Cloud, HardDrive } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { v4 as uuidv4 } from 'uuid';
+import { cn } from '../lib/cn';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  IconButton,
+  Input,
+  Modal,
+  Page,
+  PageHeader,
+  Select,
+  StatusDot,
+  type DotTone,
+} from './ui';
 import type { Model } from '../types';
 
+const PROVIDERS = [
+  { id: 'openai', name: 'OpenAI', endpoint: 'https://api.openai.com/v1/chat/completions' },
+  { id: 'anthropic', name: 'Anthropic', endpoint: 'https://api.anthropic.com/v1/messages' },
+  { id: 'deepseek', name: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1/chat/completions' },
+  { id: 'moonshot', name: '月之暗面', endpoint: 'https://api.moonshot.cn/v1/chat/completions' },
+  { id: 'ollama', name: 'Ollama（本地）', endpoint: 'http://localhost:11434/api/chat' },
+  { id: 'custom', name: '自定义', endpoint: '' },
+];
+
+const STATUS_DOT: Record<Model['status'], DotTone> = {
+  online: 'success',
+  checking: 'warning',
+  offline: 'muted',
+};
+
+const emptyForm = {
+  name: '',
+  provider: 'openai',
+  endpoint: PROVIDERS[0].endpoint,
+  apiKey: '',
+  modelIdentifier: '',
+  contextLength: 4096,
+  temperature: 0.7,
+  sourceType: 'api' as 'api' | 'local',
+};
+
 export function ModelLibrary() {
-  const { models, currentModelId, addModel, updateModel, removeModel, setCurrentModel } = useAppStore();
+  const { models, currentModelId, addModel, updateModel, removeModel, setCurrentModel } =
+    useAppStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingModel, setEditingModel] = useState<Model | null>(null);
+  const [formData, setFormData] = useState(emptyForm);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    provider: 'openai',
-    endpoint: '',
-    apiKey: '',
-    modelIdentifier: '',
-    contextLength: 4096,
-    temperature: 0.7,
-    sourceType: 'api' as 'api' | 'local',
-  });
+  const openCreate = () => {
+    setEditingModel(null);
+    setFormData(emptyForm);
+    setShowAddModal(true);
+  };
 
-  const providers = [
-    { id: 'openai', name: 'OpenAI', endpoint: 'https://api.openai.com/v1/chat/completions' },
-    { id: 'anthropic', name: 'Anthropic', endpoint: 'https://api.anthropic.com/v1/messages' },
-    { id: 'deepseek', name: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1/chat/completions' },
-    { id: 'moonshot', name: '月之暗面', endpoint: 'https://api.moonshot.cn/v1/chat/completions' },
-    { id: 'ollama', name: 'Ollama (本地)', endpoint: 'http://localhost:11434/api/chat' },
-    { id: 'custom', name: '自定义', endpoint: '' },
-  ];
+  const openEdit = (model: Model) => {
+    setEditingModel(model);
+    setFormData({
+      name: model.name,
+      provider: model.provider,
+      endpoint: model.endpoint,
+      apiKey: model.apiKey || '',
+      modelIdentifier: model.modelIdentifier,
+      contextLength: model.contextLength,
+      temperature: model.temperature,
+      sourceType: model.sourceType,
+    });
+    setShowAddModal(true);
+  };
 
   const handleProviderChange = (providerId: string) => {
-    const provider = providers.find((p) => p.id === providerId);
+    const provider = PROVIDERS.find((p) => p.id === providerId);
     setFormData({
       ...formData,
       provider: providerId,
       endpoint: provider?.endpoint || '',
-      sourceType: providerId.startsWith('ollama') ? 'local' : 'api',
+      sourceType: providerId === 'ollama' ? 'local' : 'api',
     });
   };
 
@@ -53,297 +98,223 @@ export function ModelLibrary() {
       status: 'offline',
       sourceType: formData.sourceType,
     };
-
     if (editingModel) {
       updateModel(editingModel.id, model);
     } else {
       addModel(model);
     }
-
     setShowAddModal(false);
     setEditingModel(null);
-    resetForm();
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      provider: 'openai',
-      endpoint: '',
-      apiKey: '',
-      modelIdentifier: '',
-      contextLength: 4096,
-      temperature: 0.7,
-      sourceType: 'api',
-    });
-  };
-
-  const handleEdit = (model: Model) => {
-    setEditingModel(model);
-    setFormData({
-      name: model.name,
-      provider: model.provider,
-      endpoint: model.endpoint,
-      apiKey: model.apiKey || '',
-      modelIdentifier: model.modelIdentifier,
-      contextLength: model.contextLength,
-      temperature: model.temperature,
-      sourceType: model.sourceType,
-    });
-    setShowAddModal(true);
-  };
-
-  const testConnection = async (model: Model) => {
+  const testConnection = (model: Model) => {
     updateModel(model.id, { status: 'checking' });
-    // TODO: Implement actual connection test
     setTimeout(() => {
       updateModel(model.id, { status: Math.random() > 0.3 ? 'online' : 'offline' });
     }, 1000);
   };
 
   return (
-    <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">模型库</h1>
-            <p className="text-sm text-gray-500 mt-1">管理你的 AI 模型配置</p>
-          </div>
-          <button
-            onClick={() => {
-              resetForm();
-              setEditingModel(null);
-              setShowAddModal(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            <Plus size={18} />
-            <span>添加模型</span>
-          </button>
-        </div>
+    <Page>
+      <PageHeader
+        title="模型库"
+        description="管理云端 API 与本地部署的推理后端，随时切换。"
+        actions={
+          <Button variant="primary" icon={<Plus size={15} />} onClick={openCreate}>
+            添加模型
+          </Button>
+        }
+        className="mb-6"
+      />
 
-        {/* Models Grid */}
-        {models.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
-            <div className="text-5xl mb-4">🤖</div>
-            <h3 className="text-lg font-medium text-gray-800 mb-2">还没有添加模型</h3>
-            <p className="text-gray-500 mb-4">添加一个模型来开始使用</p>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
+      {models.length === 0 ? (
+        <EmptyState
+          icon={<Cpu size={20} />}
+          title="还没有添加模型"
+          description="添加一个云端 API 或本地推理服务后即可开始对话。"
+          action={
+            <Button variant="primary" icon={<Plus size={15} />} onClick={openCreate}>
               添加第一个模型
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {models.map((model) => (
-              <div
-                key={model.id}
-                className={`bg-white rounded-xl border-2 p-4 transition-all ${
-                  currentModelId === model.id
-                    ? 'border-blue-500 shadow-md'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        model.sourceType === 'local' ? 'bg-green-100' : 'bg-blue-100'
-                      }`}
-                    >
-                      {model.sourceType === 'local' ? (
-                        <Wifi size={20} className="text-green-600" />
-                      ) : (
-                        <WifiOff size={20} className="text-blue-600" />
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-800">{model.name}</h3>
-                      <p className="text-xs text-gray-500">
-                        {providers.find((p) => p.id === model.provider)?.name || model.provider}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {model.status === 'online' && (
-                      <span className="w-2 h-2 bg-green-500 rounded-full" />
+            </Button>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {models.map((model) => {
+            const active = currentModelId === model.id;
+            const isLocal = model.sourceType === 'local';
+            return (
+              <Card key={model.id} selected={active} className="flex flex-col">
+                <div className="flex items-start gap-3">
+                  <div
+                    className={cn(
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-md border',
+                      isLocal
+                        ? 'border-success-line bg-success-subtle text-success'
+                        : 'border-accent-line bg-accent-subtle text-accent'
                     )}
-                    {model.status === 'checking' && (
-                      <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-                    )}
+                  >
+                    {isLocal ? <HardDrive size={16} /> : <Cloud size={16} />}
                   </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="truncate text-sm font-semibold text-fg">{model.name}</h3>
+                      <StatusDot tone={STATUS_DOT[model.status]} />
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-fg-muted">
+                      {PROVIDERS.find((p) => p.id === model.provider)?.name || model.provider}
+                    </p>
+                  </div>
+
+                  <Badge tone={isLocal ? 'success' : 'accent'}>
+                    {isLocal ? '本地' : '云端'}
+                  </Badge>
                 </div>
 
-                <div className="text-sm text-gray-600 mb-3 space-y-1">
-                  <p className="truncate">端点: {model.endpoint}</p>
-                  <p>上下文窗口: {model.contextLength.toLocaleString()}</p>
-                  <p>温度: {model.temperature}</p>
-                </div>
+                <dl className="mt-4 space-y-1 text-xs text-fg-muted">
+                  <div className="flex gap-2">
+                    <dt className="shrink-0">端点</dt>
+                    <dd className="truncate font-mono text-fg-secondary" title={model.endpoint}>
+                      {model.endpoint}
+                    </dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="shrink-0">上下文</dt>
+                    <dd className="text-fg-secondary">{model.contextLength.toLocaleString()}</dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="shrink-0">温度</dt>
+                    <dd className="text-fg-secondary">{model.temperature}</dd>
+                  </div>
+                </dl>
 
-                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                  <button
+                <div className="mt-4 flex items-center gap-1.5 border-t border-line pt-3">
+                  <Button
+                    variant={active ? 'primary' : 'secondary'}
+                    size="sm"
+                    icon={active ? <Check size={13} /> : undefined}
                     onClick={() => setCurrentModel(model.id)}
-                    className={`flex-1 py-2 text-sm rounded-lg transition-colors ${
-                      currentModelId === model.id
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                    className={cn(!active && 'text-fg-secondary')}
                   >
-                    {currentModelId === model.id ? (
-                      <span className="flex items-center justify-center gap-1">
-                        <Check size={14} /> 当前使用
-                      </span>
-                    ) : (
-                      '使用此模型'
-                    )}
-                  </button>
-                  <button
-                    onClick={() => testConnection(model)}
-                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="测试连接"
-                  >
-                    <Wifi size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleEdit(model)}
-                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="编辑"
-                  >
-                    <Settings2 size={16} />
-                  </button>
-                  <button
+                    {active ? '当前使用' : '使用此模型'}
+                  </Button>
+                  <div className="flex-1" />
+                  <IconButton label="测试连接" size="sm" onClick={() => testConnection(model)}>
+                    <Wifi size={14} />
+                  </IconButton>
+                  <IconButton label="编辑" size="sm" onClick={() => openEdit(model)}>
+                    <Settings2 size={14} />
+                  </IconButton>
+                  <IconButton
+                    label="删除"
+                    size="sm"
+                    className="text-fg-muted hover:bg-danger-subtle hover:text-danger"
                     onClick={() => removeModel(model.id)}
-                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                    title="删除"
                   >
-                    <Trash2 size={16} />
-                  </button>
+                    <Trash2 size={14} />
+                  </IconButton>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Add/Edit Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
-              {editingModel ? '编辑模型' : '添加模型'}
-            </h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">模型名称</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="例如: GPT-4"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">服务商</label>
-                <select
-                  value={formData.provider}
-                  onChange={(e) => handleProviderChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {providers.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">端点 URL</label>
-                <input
-                  type="text"
-                  value={formData.endpoint}
-                  onChange={(e) => setFormData({ ...formData, endpoint: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://api.openai.com/v1/chat/completions"
-                />
-              </div>
-
-              {formData.sourceType === 'api' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-                  <input
-                    type="password"
-                    value={formData.apiKey}
-                    onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="sk-..."
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">模型标识</label>
-                <input
-                  type="text"
-                  value={formData.modelIdentifier}
-                  onChange={(e) => setFormData({ ...formData, modelIdentifier: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="例如: gpt-4, claude-3-opus"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">上下文窗口</label>
-                  <input
-                    type="number"
-                    value={formData.contextLength}
-                    onChange={(e) => setFormData({ ...formData, contextLength: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">温度</label>
-                  <input
-                    type="number"
-                    value={formData.temperature}
-                    onChange={(e) => setFormData({ ...formData, temperature: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    step="0.1"
-                    min="0"
-                    max="2"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setEditingModel(null);
-                }}
-                className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={!formData.name || !formData.endpoint}
-                className="flex-1 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {editingModel ? '保存' : '添加'}
-              </button>
-            </div>
-          </div>
+              </Card>
+            );
+          })}
         </div>
       )}
-    </div>
+
+      <Modal
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        title={editingModel ? '编辑模型' : '添加模型'}
+        description="填写推理服务信息，API Key 会加密存储在本地。"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowAddModal(false)}>
+              取消
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={!formData.name || !formData.endpoint}
+            >
+              {editingModel ? '保存' : '添加'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Field label="模型名称">
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="例如：GPT-4"
+            />
+          </Field>
+
+          <Field label="服务商">
+            <Select
+              value={formData.provider}
+              onChange={(e) => handleProviderChange(e.target.value)}
+            >
+              {PROVIDERS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field label="端点 URL">
+            <Input
+              value={formData.endpoint}
+              onChange={(e) => setFormData({ ...formData, endpoint: e.target.value })}
+              placeholder="https://api.openai.com/v1/chat/completions"
+            />
+          </Field>
+
+          {formData.sourceType === 'api' && (
+            <Field label="API Key" hint="仅保存在本地，不会上传。">
+              <Input
+                type="password"
+                value={formData.apiKey}
+                onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
+                placeholder="sk-…"
+              />
+            </Field>
+          )}
+
+          <Field label="模型标识">
+            <Input
+              value={formData.modelIdentifier}
+              onChange={(e) => setFormData({ ...formData, modelIdentifier: e.target.value })}
+              placeholder="例如：gpt-4、claude-3-opus"
+            />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="上下文窗口">
+              <Input
+                type="number"
+                value={formData.contextLength}
+                onChange={(e) =>
+                  setFormData({ ...formData, contextLength: Number(e.target.value) })
+                }
+              />
+            </Field>
+            <Field label="温度">
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                max="2"
+                value={formData.temperature}
+                onChange={(e) =>
+                  setFormData({ ...formData, temperature: Number(e.target.value) })
+                }
+              />
+            </Field>
+          </div>
+        </div>
+      </Modal>
+    </Page>
   );
 }

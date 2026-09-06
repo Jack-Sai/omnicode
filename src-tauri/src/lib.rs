@@ -6,7 +6,6 @@ mod exec_tools;
 
 use db::Database;
 use llm::LlmState;
-use std::sync::Arc;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -22,12 +21,11 @@ pub fn run() {
     }
 
     let database = Database::new(db_path.to_str().unwrap()).expect("Failed to initialize database");
-    let db_state = Arc::new(database);
     let llm_state = LlmState::new();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(db_state)
+        .manage(database)
         .manage(llm_state)
         .invoke_handler(tauri::generate_handler![
             // 用户认证
@@ -68,6 +66,9 @@ pub fn run() {
             db::update_memory,
             db::delete_memory,
             db::search_memories,
+            // 应用设置
+            db::save_settings,
+            db::get_settings,
             // 插件系统
             db::add_plugin,
             db::get_plugins,

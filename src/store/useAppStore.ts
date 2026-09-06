@@ -29,10 +29,13 @@ interface AppState {
   // Conversations
   conversations: Conversation[];
   currentConversationId: string | null;
+  pendingConversationId: string | null;
   addConversation: (conversation: Conversation) => void;
   updateConversation: (id: string, updates: Partial<Conversation>) => void;
   removeConversation: (id: string) => void;
+  clearConversations: () => void;
   setCurrentConversation: (id: string | null) => void;
+  setPendingConversation: (id: string | null) => void;
 
   // Messages
   messages: Record<string, Message[]>;
@@ -80,10 +83,12 @@ export const useAppStore = create<AppState>()(
       // Conversations
       conversations: [],
       currentConversationId: null,
+      pendingConversationId: null,
       addConversation: (conversation) =>
         set((state) => ({
           conversations: [conversation, ...state.conversations],
           currentConversationId: conversation.id,
+          pendingConversationId: null,
           messages: { ...state.messages, [conversation.id]: [] },
         })),
       updateConversation: (id, updates) =>
@@ -96,10 +101,19 @@ export const useAppStore = create<AppState>()(
           return {
             conversations: state.conversations.filter((c) => c.id !== id),
             currentConversationId: state.currentConversationId === id ? null : state.currentConversationId,
+            pendingConversationId: state.pendingConversationId === id ? null : state.pendingConversationId,
             messages: rest,
           };
         }),
-      setCurrentConversation: (id) => set({ currentConversationId: id }),
+      clearConversations: () =>
+        set({
+          conversations: [],
+          currentConversationId: null,
+          pendingConversationId: null,
+          messages: {},
+        }),
+      setCurrentConversation: (id) => set({ currentConversationId: id, pendingConversationId: null }),
+      setPendingConversation: (id) => set({ pendingConversationId: id, currentConversationId: id }),
 
       // Messages
       messages: {},
@@ -123,6 +137,7 @@ export const useAppStore = create<AppState>()(
       // Settings
       settings: {
         executionMode: 'auto',
+        chatMode: 'chat',
         theme: 'system',
         language: 'zh',
         workspacePath: '~/OmniCodeWorkspace',

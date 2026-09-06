@@ -1,5 +1,6 @@
 import { useAppStore } from '../store/useAppStore';
-import { Clock, MessageSquare, Trash2 } from 'lucide-react';
+import { Clock, MessageSquare, Trash2, History } from 'lucide-react';
+import { Card, EmptyState, IconButton, Page, PageHeader } from './ui';
 
 export function HistoryView() {
   const { conversations, setCurrentConversation, removeConversation, messages } = useAppStore();
@@ -10,76 +11,67 @@ export function HistoryView() {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const diff = Date.now() - date.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days === 0) {
-      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    } else if (days === 1) {
-      return '昨天';
-    } else if (days < 7) {
-      return `${days} 天前`;
-    } else {
-      return date.toLocaleDateString('zh-CN');
-    }
+    if (days === 0) return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    if (days === 1) return '昨天';
+    if (days < 7) return `${days} 天前`;
+    return date.toLocaleDateString('zh-CN');
   };
 
-  const getMessageCount = (conversationId: string) => {
-    return messages[conversationId]?.length || 0;
-  };
+  const getMessageCount = (conversationId: string) => messages[conversationId]?.length || 0;
 
   return (
-    <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">历史记录</h1>
-          <p className="text-sm text-gray-500 mt-1">查看你的所有对话记录</p>
-        </div>
+    <Page>
+      <PageHeader
+        title="历史记录"
+        description="所有对话按最近更新排序，点击即可继续。"
+        className="mb-6"
+      />
 
-        {sortedConversations.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
-            <div className="text-5xl mb-4">📜</div>
-            <h3 className="text-lg font-medium text-gray-800 mb-2">暂无历史记录</h3>
-            <p className="text-gray-500">开始对话后会在这里显示</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {sortedConversations.map((conversation) => (
-              <div
-                key={conversation.id}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setCurrentConversation(conversation.id)}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <MessageSquare size={16} className="text-blue-500" />
-                      <h3 className="font-medium text-gray-800 truncate">{conversation.title}</h3>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Clock size={14} />
-                        {formatDate(conversation.updatedAt)}
-                      </span>
-                      <span>{getMessageCount(conversation.id)} 条消息</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeConversation(conversation.id);
-                    }}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+      {sortedConversations.length === 0 ? (
+        <EmptyState
+          icon={<History size={20} />}
+          title="暂无历史记录"
+          description="开始一段对话后，记录会出现在这里。"
+        />
+      ) : (
+        <div className="space-y-2">
+          {sortedConversations.map((conversation) => (
+            <Card
+              key={conversation.id}
+              interactive
+              className="flex items-center gap-3"
+              onClick={() => setCurrentConversation(conversation.id)}
+            >
+              <MessageSquare size={15} className="shrink-0 text-fg-muted" />
+
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-medium text-fg">{conversation.title}</h3>
+                <div className="mt-0.5 flex items-center gap-3 text-xs text-fg-muted">
+                  <span className="inline-flex items-center gap-1">
+                    <Clock size={11} />
+                    {formatDate(conversation.updatedAt)}
+                  </span>
+                  <span>{getMessageCount(conversation.id)} 条消息</span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+
+              <IconButton
+                label="删除对话"
+                size="sm"
+                className="shrink-0 text-fg-muted hover:bg-danger-subtle hover:text-danger"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeConversation(conversation.id);
+                }}
+              >
+                <Trash2 size={14} />
+              </IconButton>
+            </Card>
+          ))}
+        </div>
+      )}
+    </Page>
   );
 }

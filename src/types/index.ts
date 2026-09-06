@@ -30,9 +30,11 @@ export interface Conversation {
 }
 
 export type ExecutionMode = 'manual' | 'auto' | 'full';
+export type ChatMode = 'chat' | 'agent';
 
 export interface AppSettings {
   executionMode: ExecutionMode;
+  chatMode: ChatMode;
   theme: 'light' | 'dark' | 'system';
   language: 'zh' | 'en';
   workspacePath: string;

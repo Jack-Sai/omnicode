@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Command;
-use std::time::Duration;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ToolResult {

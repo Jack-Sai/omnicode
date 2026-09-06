@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Square } from 'lucide-react';
+import { Send, Paperclip, Square, MessageSquare, Sparkles, AlertTriangle } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from '../store/useAppStore';
 import { v4 as uuidv4 } from 'uuid';
+import { cn } from '../lib/cn';
+import { Badge, Button, EmptyState, Select, Segmented, Textarea } from './ui';
 import type { Message } from '../types';
+import type { ChatMode } from '../types';
 
 interface StreamEvent {
   event_type: string;
@@ -15,11 +18,16 @@ interface StreamEvent {
 export function ChatView() {
   const {
     currentConversationId,
+    conversations,
     messages,
     addMessage,
     updateMessage,
+    addConversation,
+    pendingConversationId,
     models,
     currentModelId,
+    settings,
+    updateSettings,
   } = useAppStore();
 
   const [input, setInput] = useState('');
@@ -31,23 +39,22 @@ export function ChatView() {
 
   const currentMessages = currentConversationId ? messages[currentConversationId] || [] : [];
   const currentModel = models.find((m) => m.id === currentModelId);
+  const currentConversation = conversations.find((c) => c.id === currentConversationId);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [currentMessages]);
 
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
-    }
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [input]);
 
-  // 监听流式响应
   useEffect(() => {
     const unlisten = listen<StreamEvent>('chat-stream-chunk', (event) => {
       const { event_type, content } = event.payload;
-
       if (event_type === 'content' && streamingMessageId && currentConversationId) {
         const currentMsg = messages[currentConversationId]?.find(
           (m) => m.id === streamingMessageId
@@ -62,7 +69,6 @@ export function ChatView() {
         setStreamingMessageId(null);
       }
     });
-
     return () => {
       unlisten.then((fn) => fn());
     };
@@ -71,6 +77,25 @@ export function ChatView() {
   const handleSubmit = async () => {
     if (!input.trim() || !currentConversationId || !currentModel) return;
 
+    const isFirstMessage = pendingConversationId === currentConversationId;
+    if (isFirstMessage) {
+      const conversation = {
+        id: currentConversationId,
+        title: input.trim().slice(0, 30),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      addConversation(conversation);
+    } else {
+      const conv = conversations.find((c) => c.id === currentConversationId);
+      if (conv) {
+        useAppStore.getState().updateConversation(currentConversationId, {
+          title: conv.title === '新对话' ? input.trim().slice(0, 30) : conv.title,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    }
+
     const userMessage: Message = {
       id: uuidv4(),
       conversationId: currentConversationId,
@@ -78,12 +103,10 @@ export function ChatView() {
       content: input.trim(),
       createdAt: new Date().toISOString(),
     };
-
     addMessage(currentConversationId, userMessage);
     setInput('');
     setIsLoading(true);
 
-    // 创建一个空的 assistant 消息用于流式填充
     const assistantMessageId = uuidv4();
     const assistantMessage: Message = {
       id: assistantMessageId,
@@ -96,16 +119,10 @@ export function ChatView() {
     setStreamingMessageId(assistantMessageId);
 
     try {
-      // 构建消息历史
       const chatMessages = [
-        ...currentMessages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
+        ...currentMessages.map((m) => ({ role: m.role, content: m.content })),
         { role: 'user', content: input.trim() },
       ];
-
-      // 调用流式 API
       await invoke('send_chat_request_stream', {
         endpoint: currentModel.endpoint,
         apiKey: currentModel.apiKey || null,
@@ -140,108 +157,171 @@ export function ChatView() {
     }
   };
 
+  /* ---------- 未选择对话 ---------- */
   if (!currentConversationId) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white">
-        <div className="text-center text-gray-500">
-          <div className="text-6xl mb-4">💬</div>
-          <h2 className="text-xl font-medium mb-2">开始新对话</h2>
-          <p className="text-sm">选择一个对话或创建新对话</p>
-        </div>
+      <div className="flex flex-1 items-center justify-center p-6">
+        <EmptyState
+          icon={<MessageSquare size={20} />}
+          title="开始新对话"
+          description="在左侧选择一个已有对话，或创建一个新的对话。"
+        />
       </div>
     );
   }
 
+  /* ---------- 对话主界面 ---------- */
   return (
-    <div className="flex-1 flex flex-col bg-white">
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {currentMessages.length === 0 && (
-          <div className="text-center text-gray-500 mt-20">
-            <div className="text-5xl mb-4">🤖</div>
-            <p className="text-lg font-medium mb-1">你好！我是 Omni Code</p>
-            <p className="text-sm">你的 AI 编程助手</p>
-          </div>
-        )}
+    <div className="flex min-h-0 flex-1 flex-col p-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface">
+        {/* 顶栏 */}
+        <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-line px-6">
+          <h1 className="truncate text-sm font-semibold text-fg">
+            {currentConversation?.title || '新对话'}
+          </h1>
+          {currentModel ? (
+            <Badge tone="accent">{currentModel.name}</Badge>
+          ) : (
+            <Badge tone="warning">未选择模型</Badge>
+          )}
+        </header>
 
-        {currentMessages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-[70%] rounded-2xl px-4 py-3 ${
-                message.role === 'user'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-800'
-              }`}
-            >
-              <div className="whitespace-pre-wrap">
-                {message.content}
-                {streamingMessageId === message.id && (
-                  <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse" />
-                )}
+        {/* 消息流 */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-3xl px-6 py-6">
+            {currentMessages.length === 0 ? (
+              <EmptyState
+                className="border-transparent bg-transparent shadow-none pt-20"
+                icon={<Sparkles size={28} />}
+                title="你好，我是 Omni Code"
+                description="用自然语言描述你的目标，我会自主规划、调用工具并完成编码任务。"
+              />
+            ) : (
+              <div className="space-y-5">
+                {currentMessages.map((message) => {
+                  const isUser = message.role === 'user';
+                  return (
+                    <div
+                      key={message.id}
+                      className={cn('flex flex-col gap-1.5', isUser ? 'items-end' : 'items-start')}
+                    >
+                      <span className="px-1 text-[11px] font-medium uppercase tracking-wide text-fg-muted">
+                        {isUser ? '你' : 'Omni Code'}
+                      </span>
+                      <div
+                        className={cn(
+                          'max-w-[85%] rounded-lg border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap',
+                          isUser
+                            ? 'border-accent bg-accent text-accent-solid'
+                            : 'border-line bg-surface text-fg shadow-sm'
+                        )}
+                      >
+                        {message.content}
+                        {streamingMessageId === message.id && (
+                          <span className="ml-0.5 inline-block h-4 w-[3px] translate-y-0.5 animate-pulse rounded-full bg-accent" />
+                        )}
+
+                        {message.reasoning && (
+                          <details className="mt-3 border-t border-line pt-2 text-xs opacity-80">
+                            <summary className="cursor-pointer select-none font-medium">
+                              思考过程
+                            </summary>
+                            <p className="mt-1.5 whitespace-pre-wrap">{message.reasoning}</p>
+                          </details>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
               </div>
-              {message.reasoning && (
-                <div className="mt-2 pt-2 border-t border-gray-200/30 text-sm opacity-80">
-                  <details>
-                    <summary className="cursor-pointer">思考过程</summary>
-                    <p className="mt-1">{message.reasoning}</p>
-                  </details>
-                </div>
+            )}
+          </div>
+        </div>
+
+        {/* 输入区 */}
+        <div className="shrink-0 px-6 py-4">
+          <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-xl border border-line bg-surface shadow-md transition-[border-color,box-shadow] duration-150 focus-within:border-accent focus-within:shadow-[var(--shadow-focus)]">
+            {/* 输入框 */}
+            <div className="flex items-end gap-2 px-4 pt-4 pb-3">
+              <button
+                type="button"
+                title="添加附件"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-fg-muted transition-colors duration-150 hover:bg-surface-hover hover:text-fg focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+              >
+                <Paperclip size={16} />
+              </button>
+
+              <Textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={currentModel ? `向 ${currentModel.name} 提问…` : '请先在模型库中选择一个模型'}
+                className="max-h-[240px] min-h-[48px] flex-1 border-0 bg-transparent px-1 py-2 shadow-none focus:shadow-none"
+                rows={2}
+                disabled={!currentModel || isLoading}
+              />
+            </div>
+
+            {/* 控制行：模型选择 + 模式选择 + 发送按钮 */}
+            <div className="flex items-center gap-2 px-3 pb-3 pt-1">
+              <Select
+                selectSize="sm"
+                value={currentModelId || ''}
+                onChange={(e) => useAppStore.getState().setCurrentModel(e.target.value)}
+                className="w-auto min-w-[140px]"
+                disabled={!currentModel}
+              >
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </Select>
+
+              <Segmented
+                size="sm"
+                options={[
+                  { value: 'chat', label: '对话' },
+                  { value: 'agent', label: '智能体' },
+                ]}
+                value={settings.chatMode}
+                onChange={(v) => updateSettings({ chatMode: v as ChatMode })}
+              />
+
+              <div className="flex-1" />
+
+              {isLoading ? (
+                <Button variant="danger" onClick={handleStop} className="h-8 w-8 shrink-0 p-0">
+                  <Square size={14} />
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  onClick={handleSubmit}
+                  disabled={!input.trim() || !currentModel}
+                  className="h-8 w-8 shrink-0 p-0"
+                >
+                  <Send size={15} />
+                </Button>
               )}
             </div>
           </div>
-        ))}
 
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Area */}
-      <div className="border-t border-gray-200 p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-end gap-3 bg-gray-50 rounded-2xl p-3 border border-gray-200 focus-within:border-blue-400 transition-colors">
-            <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
-              <Paperclip size={20} />
-            </button>
-
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={currentModel ? `向 ${currentModel.name} 提问...` : '请先选择模型...'}
-              className="flex-1 resize-none bg-transparent outline-none text-gray-800 placeholder-gray-500 min-h-[24px] max-h-[200px]"
-              rows={1}
-              disabled={!currentModel || isLoading}
-            />
-
-            {isLoading ? (
-              <button
-                onClick={handleStop}
-                className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-              >
-                <Square size={20} />
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={!input.trim() || !currentModel}
-                className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Send size={20} />
-              </button>
-            )}
-          </div>
-
-          {/* Model Indicator */}
-          <div className="mt-2 text-xs text-gray-500 text-center">
+          <p className="mt-2 flex items-center justify-center gap-1.5 text-xs text-fg-muted">
             {currentModel ? (
-              <span>当前模型: {currentModel.name}</span>
+              <>
+                当前模型 <span className="font-medium text-fg-secondary">{currentModel.name}</span>
+                <span className="text-fg-muted/60">·</span> Enter 发送，Shift + Enter 换行
+              </>
             ) : (
-              <span className="text-amber-600">请先在模型库中选择一个模型</span>
+              <>
+                <AlertTriangle size={12} className="text-warning" />
+                <span className="text-warning">请先在模型库中添加并选择一个模型</span>
+              </>
             )}
-          </div>
+          </p>
         </div>
       </div>
     </div>

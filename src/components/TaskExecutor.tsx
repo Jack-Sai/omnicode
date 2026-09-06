@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Play, Pause, RotateCcw, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
+import { Badge, Button, Card, CodeBlock, ProgressBar, type BadgeTone } from './ui';
 
 export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -26,12 +27,23 @@ interface TaskExecutorProps {
   onRetry?: (taskId: string, stepId: string) => void;
 }
 
-const statusConfig: Record<StepStatus, { icon: React.ReactNode; color: string; label: string }> = {
-  pending: { icon: <Clock size={16} />, color: 'text-gray-400', label: '等待中' },
-  running: { icon: <Loader2 size={16} className="animate-spin" />, color: 'text-blue-500', label: '执行中' },
-  completed: { icon: <CheckCircle size={16} />, color: 'text-green-500', label: '已完成' },
-  failed: { icon: <XCircle size={16} />, color: 'text-red-500', label: '失败' },
-  cancelled: { icon: <Pause size={16} />, color: 'text-yellow-500', label: '已取消' },
+const STEP_STATUS: Record<StepStatus, { icon: React.ReactNode; tone: BadgeTone; label: string }> = {
+  pending: { icon: <Clock size={14} />, tone: 'neutral', label: '等待中' },
+  running: {
+    icon: <Loader2 size={14} className="animate-spin" />,
+    tone: 'info',
+    label: '执行中',
+  },
+  completed: { icon: <CheckCircle size={14} />, tone: 'success', label: '已完成' },
+  failed: { icon: <XCircle size={14} />, tone: 'danger', label: '失败' },
+  cancelled: { icon: <Pause size={14} />, tone: 'warning', label: '已取消' },
+};
+
+const TASK_STATUS: Record<TaskPlan['status'], { tone: BadgeTone; label: string }> = {
+  draft: { tone: 'neutral', label: '草稿' },
+  running: { tone: 'info', label: '执行中' },
+  completed: { tone: 'success', label: '已完成' },
+  failed: { tone: 'danger', label: '失败' },
 };
 
 export function TaskExecutor({ task, onExecute, onCancel, onRetry }: TaskExecutorProps) {
@@ -40,167 +52,168 @@ export function TaskExecutor({ task, onExecute, onCancel, onRetry }: TaskExecuto
   const completedSteps = task.steps.filter((s) => s.status === 'completed').length;
   const totalSteps = task.steps.length;
   const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+  const taskStatus = TASK_STATUS[task.status];
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="font-medium text-gray-800">任务执行</span>
-          <span className={`text-xs px-2 py-0.5 rounded-full ${
-            task.status === 'running'
-              ? 'bg-blue-100 text-blue-600'
-              : task.status === 'completed'
-              ? 'bg-green-100 text-green-600'
-              : task.status === 'failed'
-              ? 'bg-red-100 text-red-600'
-              : 'bg-gray-100 text-gray-600'
-          }`}>
-            {task.status === 'running' ? '执行中' : task.status === 'completed' ? '已完成' : task.status === 'failed' ? '失败' : '草稿'}
-          </span>
+    <Card padding="none" className="overflow-hidden">
+      {/* 头部 */}
+      <div className="flex items-center justify-between gap-4 border-b border-line px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <h3 className="truncate text-sm font-semibold text-fg">任务执行</h3>
+          <Badge tone={taskStatus.tone}>{taskStatus.label}</Badge>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex shrink-0 items-center gap-2">
           {task.status === 'draft' && (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Play size={13} />}
               onClick={() => onExecute?.(task.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
             >
-              <Play size={14} />
               执行
-            </button>
+            </Button>
           )}
           {task.status === 'running' && (
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Pause size={13} />}
               onClick={() => onCancel?.(task.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-red-300 text-red-600 text-sm rounded-lg hover:bg-red-50 transition-colors"
             >
-              <Pause size={14} />
               取消
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="px-4 py-2 bg-gray-50">
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+      {/* 进度 */}
+      <div className="border-b border-line bg-inset px-4 py-3">
+        <div className="mb-1.5 flex items-center justify-between text-xs text-fg-muted">
           <span>进度</span>
-          <span>{completedSteps}/{totalSteps}</span>
+          <span className="font-medium text-fg-secondary">
+            {completedSteps}/{totalSteps}
+          </span>
         </div>
-        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${
-              task.status === 'failed' ? 'bg-red-500' : 'bg-blue-500'
-            }`}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+        <ProgressBar value={progress} tone={task.status === 'failed' ? 'danger' : 'accent'} />
       </div>
 
-      {/* Steps List */}
-      <div className="divide-y divide-gray-100">
+      {/* 步骤列表 */}
+      <ul className="divide-y divide-line">
         {task.steps.map((step, index) => {
-          const config = statusConfig[step.status];
+          const config = STEP_STATUS[step.status];
           const isExpanded = expandedStep === step.id;
 
           return (
-            <div key={step.id} className="px-4 py-3">
-              <div
-                className="flex items-center gap-3 cursor-pointer"
+            <li key={step.id}>
+              <button
+                type="button"
                 onClick={() => setExpandedStep(isExpanded ? null : step.id)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-surface-hover"
               >
-                <span className="text-gray-400 text-sm w-6">{index + 1}</span>
-                <span className={config.color}>{config.icon}</span>
-                <span className="flex-1 font-medium text-gray-800">{step.tool_name}</span>
+                <span className="w-5 shrink-0 text-center font-mono text-xs text-fg-muted">
+                  {index + 1}
+                </span>
+                <span
+                  className={
+                    step.status === 'completed'
+                      ? 'shrink-0 text-success'
+                      : step.status === 'running'
+                        ? 'shrink-0 text-info'
+                        : step.status === 'failed'
+                          ? 'shrink-0 text-danger'
+                          : 'shrink-0 text-fg-muted'
+                  }
+                >
+                  {config.icon}
+                </span>
+                <span className="min-w-0 flex-1 truncate font-mono text-sm font-medium text-fg">
+                  {step.tool_name}
+                </span>
                 {step.retry_count > 0 && (
-                  <span className="text-xs text-gray-400">重试 {step.retry_count} 次</span>
+                  <span className="shrink-0 text-xs text-fg-muted">重试 {step.retry_count} 次</span>
                 )}
-              </div>
+                <Badge tone={config.tone}>{config.label}</Badge>
+              </button>
 
-              {/* Step Details */}
               {isExpanded && (
-                <div className="mt-3 ml-9 space-y-2">
-                  {/* Params */}
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-xs text-gray-500 mb-1">参数</div>
-                    <pre className="text-xs text-gray-700 overflow-x-auto">
-                      {JSON.stringify(step.params, null, 2)}
-                    </pre>
+                <div className="space-y-2 px-4 pb-4 pl-12">
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-fg-secondary">参数</p>
+                    <CodeBlock>{JSON.stringify(step.params, null, 2)}</CodeBlock>
                   </div>
 
-                  {/* Result */}
                   {step.result && (
-                    <div className="bg-green-50 rounded-lg p-3">
-                      <div className="text-xs text-green-600 mb-1">结果</div>
-                      <pre className="text-xs text-green-700 overflow-x-auto">{step.result}</pre>
+                    <div>
+                      <p className="mb-1 text-xs font-medium text-success">结果</p>
+                      <CodeBlock className="border-success-line bg-success-subtle text-success">
+                        {step.result}
+                      </CodeBlock>
                     </div>
                   )}
 
-                  {/* Error */}
                   {step.error_message && (
-                    <div className="bg-red-50 rounded-lg p-3">
-                      <div className="text-xs text-red-600 mb-1">错误</div>
-                      <pre className="text-xs text-red-700 overflow-x-auto">{step.error_message}</pre>
+                    <div>
+                      <p className="mb-1 text-xs font-medium text-danger">错误</p>
+                      <CodeBlock className="border-danger-line bg-danger-subtle text-danger">
+                        {step.error_message}
+                      </CodeBlock>
                     </div>
                   )}
 
-                  {/* Actions */}
                   {step.status === 'failed' && onRetry && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<RotateCcw size={13} />}
                       onClick={() => onRetry(task.id, step.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                     >
-                      <RotateCcw size={14} />
                       重试此步骤
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
-            </div>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ul>
+    </Card>
   );
 }
 
-// DAG 可视化组件（简化版）
+/* DAG 可视化组件（简化版） */
 interface DAGVisualizerProps {
   steps: Step[];
 }
 
+const NODE_TONE: Record<StepStatus, string> = {
+  pending: 'border-line bg-inset text-fg-secondary',
+  running: 'border-info-line bg-info-subtle text-info',
+  completed: 'border-success-line bg-success-subtle text-success',
+  failed: 'border-danger-line bg-danger-subtle text-danger',
+  cancelled: 'border-warning-line bg-warning-subtle text-warning',
+};
+
 export function DAGVisualizer({ steps }: DAGVisualizerProps) {
   return (
-    <div className="flex flex-col items-center gap-2 py-4">
-      {steps.map((step, index) => {
-        const config = statusConfig[step.status];
-        
-        return (
-          <div key={step.id} className="flex items-center gap-3">
-            {/* Node */}
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${
-              step.status === 'completed'
-                ? 'border-green-300 bg-green-50'
-                : step.status === 'running'
-                ? 'border-blue-300 bg-blue-50'
-                : step.status === 'failed'
-                ? 'border-red-300 bg-red-50'
-                : 'border-gray-200 bg-gray-50'
-            }`}>
-              <span className={config.color}>{config.icon}</span>
-              <span className="text-sm font-medium text-gray-700">{step.tool_name}</span>
-            </div>
-            
-            {/* Arrow */}
-            {index < steps.length - 1 && (
-              <div className="flex flex-col items-center">
-                <div className="w-0.5 h-4 bg-gray-300" />
-                <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-300" />
-              </div>
-            )}
+    <div className="flex flex-col items-center gap-1 py-4">
+      {steps.map((step, index) => (
+        <div key={step.id} className="flex flex-col items-center">
+          <div
+            className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium ${NODE_TONE[step.status]}`}
+          >
+            {STEP_STATUS[step.status].icon}
+            <span className="font-mono">{step.tool_name}</span>
           </div>
-        );
-      })}
+
+          {index < steps.length - 1 && (
+            <div className="flex flex-col items-center py-1">
+              <span className="h-3 w-px bg-line-strong" />
+              <span className="h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-line-strong" />
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
