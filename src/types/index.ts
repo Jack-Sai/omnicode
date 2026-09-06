@@ -39,3 +39,19 @@ export interface AppSettings {
   language: 'zh' | 'en';
   workspacePath: string;
 }
+
+export interface KnowledgeBase {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  knowledgeBaseId: string;
+  title: string;
+  content: string;
+  createdAt: string;
+}

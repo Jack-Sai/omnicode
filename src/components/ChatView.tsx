@@ -5,6 +5,7 @@ import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from '../store/useAppStore';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '../lib/cn';
+import { useTranslation } from '../i18n';
 import { Badge, Button, EmptyState, Select, Segmented, Textarea } from './ui';
 import type { Message } from '../types';
 import type { ChatMode } from '../types';
@@ -16,6 +17,7 @@ interface StreamEvent {
 }
 
 export function ChatView() {
+  const { t } = useTranslation();
   const {
     currentConversationId,
     conversations,
@@ -134,7 +136,7 @@ export function ChatView() {
       });
     } catch (error) {
       updateMessage(currentConversationId, assistantMessageId, {
-        content: `错误: ${error}`,
+        content: `${t('chat.error.prefix')}${error}`,
       });
       setIsLoading(false);
       setStreamingMessageId(null);
@@ -163,8 +165,8 @@ export function ChatView() {
       <div className="flex flex-1 items-center justify-center p-6">
         <EmptyState
           icon={<MessageSquare size={20} />}
-          title="开始新对话"
-          description="在左侧选择一个已有对话，或创建一个新的对话。"
+          title={t('chat.no_model.title')}
+          description={t('chat.no_model.desc')}
         />
       </div>
     );
@@ -192,9 +194,11 @@ export function ChatView() {
             {currentMessages.length === 0 ? (
               <EmptyState
                 className="border-transparent bg-transparent shadow-none pt-20"
-                icon={<Sparkles size={28} />}
-                title="你好，我是 Omni Code"
-                description="用自然语言描述你的目标，我会自主规划、调用工具并完成编码任务。"
+                iconClassName="h-16 w-16"
+                titleClassName="text-xl"
+                icon={<Sparkles size={36} />}
+                title={t('chat.empty.title')}
+                description={t('chat.empty.desc')}
               />
             ) : (
               <div className="space-y-5">
@@ -224,7 +228,7 @@ export function ChatView() {
                         {message.reasoning && (
                           <details className="mt-3 border-t border-line pt-2 text-xs opacity-80">
                             <summary className="cursor-pointer select-none font-medium">
-                              思考过程
+                              {t('chat.thinking')}
                             </summary>
                             <p className="mt-1.5 whitespace-pre-wrap">{message.reasoning}</p>
                           </details>
@@ -244,28 +248,28 @@ export function ChatView() {
           <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-xl border border-line bg-surface shadow-md transition-[border-color,box-shadow] duration-150 focus-within:border-accent focus-within:shadow-[var(--shadow-focus)]">
             {/* 输入框 */}
             <div className="flex items-end gap-2 px-4 pt-4 pb-3">
-              <button
-                type="button"
-                title="添加附件"
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-fg-muted transition-colors duration-150 hover:bg-surface-hover hover:text-fg focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
-              >
-                <Paperclip size={16} />
-              </button>
-
               <Textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={currentModel ? `向 ${currentModel.name} 提问…` : '请先在模型库中选择一个模型'}
+                placeholder={currentModel ? t('chat.placeholder').replace('{name}', currentModel.name) : t('chat.placeholder.no_model')}
                 className="max-h-[240px] min-h-[48px] flex-1 border-0 bg-transparent px-1 py-2 shadow-none focus:shadow-none"
                 rows={2}
                 disabled={!currentModel || isLoading}
               />
             </div>
 
-            {/* 控制行：模型选择 + 模式选择 + 发送按钮 */}
+            {/* 控制行：附件 + 模型选择 + 模式选择 + 发送按钮 */}
             <div className="flex items-center gap-2 px-3 pb-3 pt-1">
+              <button
+                type="button"
+                title={t('chat.attachment')}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-fg-muted transition-colors duration-150 hover:bg-surface-hover hover:text-fg focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+              >
+                <Paperclip size={16} />
+              </button>
+
               <Select
                 selectSize="sm"
                 value={currentModelId || ''}
@@ -283,8 +287,8 @@ export function ChatView() {
               <Segmented
                 size="sm"
                 options={[
-                  { value: 'chat', label: '对话' },
-                  { value: 'agent', label: '智能体' },
+                  { value: 'chat', label: t('chat.mode.chat') },
+                  { value: 'agent', label: t('chat.mode.agent') },
                 ]}
                 value={settings.chatMode}
                 onChange={(v) => updateSettings({ chatMode: v as ChatMode })}
@@ -312,13 +316,13 @@ export function ChatView() {
           <p className="mt-2 flex items-center justify-center gap-1.5 text-xs text-fg-muted">
             {currentModel ? (
               <>
-                当前模型 <span className="font-medium text-fg-secondary">{currentModel.name}</span>
-                <span className="text-fg-muted/60">·</span> Enter 发送，Shift + Enter 换行
+                {t('chat.hint.model')} <span className="font-medium text-fg-secondary">{currentModel.name}</span>
+                <span className="text-fg-muted/60">·</span> {t('chat.hint.send')}
               </>
             ) : (
               <>
                 <AlertTriangle size={12} className="text-warning" />
-                <span className="text-warning">请先在模型库中添加并选择一个模型</span>
+                <span className="text-warning">{t('chat.hint.no_model')}</span>
               </>
             )}
           </p>

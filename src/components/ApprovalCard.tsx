@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, X, AlertTriangle, File, Terminal, Edit, ShieldCheck } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { useTranslation } from '../i18n';
 import { Badge, Button, Card, CardHeader, CodeBlock, type BadgeTone } from './ui';
 
 export type RiskLevel = 'low' | 'medium' | 'high';
@@ -40,6 +41,7 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
 };
 
 export function ApprovalCard({ toolCall, onApprove, onReject, onModify }: ApprovalCardProps) {
+  const { t } = useTranslation();
   const [showParams, setShowParams] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editedParams, setEditedParams] = useState(JSON.stringify(toolCall.params, null, 2));
@@ -51,7 +53,7 @@ export function ApprovalCard({ toolCall, onApprove, onReject, onModify }: Approv
       onModify?.(toolCall.id, JSON.parse(editedParams));
       setEditing(false);
     } catch {
-      alert('JSON 格式错误');
+      alert(t('approval.json_error'));
     }
   };
 
@@ -80,7 +82,7 @@ export function ApprovalCard({ toolCall, onApprove, onReject, onModify }: Approv
           onClick={() => setShowParams(!showParams)}
           className="text-[11px] font-medium text-fg-muted transition-colors hover:text-fg"
         >
-          {showParams ? '隐藏参数' : '查看参数'}
+          {showParams ? t('approval.hide_params') : t('approval.view_params')}
         </button>
       </div>
 
@@ -96,10 +98,10 @@ export function ApprovalCard({ toolCall, onApprove, onReject, onModify }: Approv
               />
               <div className="flex gap-2">
                 <Button variant="primary" size="sm" onClick={handleSaveEdit}>
-                  保存
+                  {t('approval.save')}
                 </Button>
                 <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>
-                  取消
+                  {t('approval.cancel')}
                 </Button>
               </div>
             </div>
@@ -117,11 +119,11 @@ export function ApprovalCard({ toolCall, onApprove, onReject, onModify }: Approv
           className="flex-1"
           onClick={() => onApprove(toolCall.id)}
         >
-          批准
+          {t('approval.approve')}
         </Button>
         {onModify && (
           <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-            修改参数
+            {t('approval.modify')}
           </Button>
         )}
         <Button
@@ -131,7 +133,7 @@ export function ApprovalCard({ toolCall, onApprove, onReject, onModify }: Approv
           className="flex-1"
           onClick={() => onReject(toolCall.id)}
         >
-          拒绝
+          {t('approval.reject')}
         </Button>
       </div>
     </Card>
@@ -155,6 +157,7 @@ export function ApprovalQueue({
   onApproveAll,
   onRejectAll,
 }: ApprovalQueueProps) {
+  const { t } = useTranslation();
   const { settings } = useAppStore();
   if (toolCalls.length === 0) return null;
 
@@ -163,10 +166,10 @@ export function ApprovalQueue({
   return (
     <Card padding="lg">
       <CardHeader
-        title={`待审批操作（${toolCalls.length}）`}
+        title={t('approval.pending').replace('{count}', String(toolCalls.length))}
         actions={
           settings.executionMode === 'auto' && !hasHighRisk ? (
-            <Badge tone="info">自动审批模式</Badge>
+            <Badge tone="info">{t('approval.auto_mode')}</Badge>
           ) : undefined
         }
         className="mb-4"
@@ -194,7 +197,7 @@ export function ApprovalQueue({
               className="flex-1"
               onClick={onApproveAll}
             >
-              全部批准
+              {t('approval.approve_all')}
             </Button>
           )}
           {onRejectAll && (
@@ -205,7 +208,7 @@ export function ApprovalQueue({
               className="flex-1"
               onClick={onRejectAll}
             >
-              全部拒绝
+              {t('approval.reject_all')}
             </Button>
           )}
         </div>

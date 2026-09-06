@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Model, Conversation, Message, AppSettings } from '../types';
+import type { Model, Conversation, Message, AppSettings, KnowledgeBase, KnowledgeDocument } from '../types';
 
 interface AuthUser {
   id: string;
@@ -45,6 +45,14 @@ interface AppState {
   // Settings
   settings: AppSettings;
   updateSettings: (updates: Partial<AppSettings>) => void;
+
+  // Knowledge Base
+  knowledgeBases: KnowledgeBase[];
+  knowledgeDocuments: Record<string, KnowledgeDocument[]>;
+  addKnowledgeBase: (kb: KnowledgeBase) => void;
+  removeKnowledgeBase: (id: string) => void;
+  addKnowledgeDocument: (doc: KnowledgeDocument) => void;
+  removeKnowledgeDocument: (id: string) => void;
 
   // UI State
   sidebarCollapsed: boolean;
@@ -146,6 +154,38 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           settings: { ...state.settings, ...updates },
         })),
+
+      // Knowledge Base
+      knowledgeBases: [],
+      knowledgeDocuments: {},
+      addKnowledgeBase: (kb) =>
+        set((state) => ({
+          knowledgeBases: [kb, ...state.knowledgeBases],
+          knowledgeDocuments: { ...state.knowledgeDocuments, [kb.id]: [] },
+        })),
+      removeKnowledgeBase: (id) =>
+        set((state) => {
+          const { [id]: _, ...rest } = state.knowledgeDocuments;
+          return {
+            knowledgeBases: state.knowledgeBases.filter((kb) => kb.id !== id),
+            knowledgeDocuments: rest,
+          };
+        }),
+      addKnowledgeDocument: (doc) =>
+        set((state) => ({
+          knowledgeDocuments: {
+            ...state.knowledgeDocuments,
+            [doc.knowledgeBaseId]: [...(state.knowledgeDocuments[doc.knowledgeBaseId] || []), doc],
+          },
+        })),
+      removeKnowledgeDocument: (id) =>
+        set((state) => {
+          const updated = { ...state.knowledgeDocuments };
+          for (const kbId of Object.keys(updated)) {
+            updated[kbId] = updated[kbId].filter((doc) => doc.id !== id);
+          }
+          return { knowledgeDocuments: updated };
+        }),
 
       // UI State
       sidebarCollapsed: false,

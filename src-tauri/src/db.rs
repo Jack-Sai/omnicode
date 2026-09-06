@@ -285,12 +285,14 @@ pub fn get_models(state: State<'_, Database>) -> Result<Vec<Model>, String> {
 
     let models = stmt
         .query_map([], |row| {
+            let api_key_encrypted: Option<String> = row.get(4)?;
+            let api_key = api_key_encrypted.map(|k| crate::crypto::decrypt_api_key(&k));
             Ok(Model {
                 id: row.get(0)?,
                 name: row.get(1)?,
                 provider: row.get(2)?,
                 endpoint: row.get(3)?,
-                api_key: row.get(4)?,
+                api_key,
                 model_identifier: row.get(5)?,
                 context_length: row.get(6)?,
                 temperature: row.get(7)?,
@@ -312,6 +314,7 @@ pub fn add_model(
     model: Model,
 ) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let encrypted_key = model.api_key.as_deref().map(crate::crypto::encrypt_api_key).unwrap_or_default();
     conn.execute(
         "INSERT INTO models (id, name, provider, endpoint, api_key, model_identifier, context_length, temperature, is_default, status, source_type) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         params![
@@ -319,7 +322,7 @@ pub fn add_model(
             model.name,
             model.provider,
             model.endpoint,
-            model.api_key,
+            encrypted_key,
             model.model_identifier,
             model.context_length,
             model.temperature,
@@ -339,13 +342,14 @@ pub fn update_model(
     model: Model,
 ) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let encrypted_key = model.api_key.as_deref().map(crate::crypto::encrypt_api_key).unwrap_or_default();
     conn.execute(
         "UPDATE models SET name = ?1, provider = ?2, endpoint = ?3, api_key = ?4, model_identifier = ?5, context_length = ?6, temperature = ?7, is_default = ?8, status = ?9, source_type = ?10 WHERE id = ?11",
         params![
             model.name,
             model.provider,
             model.endpoint,
-            model.api_key,
+            encrypted_key,
             model.model_identifier,
             model.context_length,
             model.temperature,
@@ -888,6 +892,7 @@ pub fn add_plugin(
     plugin: Plugin,
 ) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let encrypted_auth = plugin.auth_config.as_deref().map(crate::crypto::encrypt_api_key).unwrap_or_default();
     conn.execute(
         "INSERT INTO plugins (id, user_id, name, description, plugin_type, version, enabled, config, endpoint, method, schema, auth_config, installed_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         params![
@@ -902,7 +907,7 @@ pub fn add_plugin(
             plugin.endpoint,
             plugin.method,
             plugin.schema,
-            plugin.auth_config,
+            encrypted_auth,
             plugin.installed_at,
         ],
     )
@@ -924,6 +929,8 @@ pub fn get_plugins(
     
     let plugins = stmt
         .query_map(params![user_id], |row| {
+            let auth_config_encrypted: Option<String> = row.get(11)?;
+            let auth_config = auth_config_encrypted.map(|c| crate::crypto::decrypt_api_key(&c));
             Ok(Plugin {
                 id: row.get(0)?,
                 user_id: row.get(1)?,
@@ -936,7 +943,7 @@ pub fn get_plugins(
                 endpoint: row.get(8)?,
                 method: row.get(9)?,
                 schema: row.get(10)?,
-                auth_config: row.get(11)?,
+                auth_config,
                 installed_at: row.get(12)?,
             })
         })

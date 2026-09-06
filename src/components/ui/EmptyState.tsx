@@ -9,17 +9,19 @@ export interface EmptyStateProps {
   description?: string;
   action?: ReactNode;
   className?: string;
+  titleClassName?: string;
+  iconClassName?: string;
 }
 
-export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action, className, titleClassName, iconClassName }: EmptyStateProps) {
   return (
     <Card className={cn('flex flex-col items-center px-6 py-16 text-center', className)}>
       {icon && (
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-line bg-inset text-fg-muted">
+        <div className={cn('mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-line bg-inset text-fg-muted', iconClassName)}>
           {icon}
         </div>
       )}
-      <h3 className="text-sm font-semibold text-fg">{title}</h3>
+      <h3 className={cn('text-sm font-semibold text-fg', titleClassName)}>{title}</h3>
       {description && <p className="mt-1 max-w-xs text-xs text-fg-muted">{description}</p>}
       {action && <div className="mt-5">{action}</div>}
     </Card>

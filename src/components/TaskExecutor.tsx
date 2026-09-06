@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Play, Pause, RotateCcw, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
+import { useTranslation } from '../i18n';
 import { Badge, Button, Card, CodeBlock, ProgressBar, type BadgeTone } from './ui';
 
 export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -47,6 +48,7 @@ const TASK_STATUS: Record<TaskPlan['status'], { tone: BadgeTone; label: string }
 };
 
 export function TaskExecutor({ task, onExecute, onCancel, onRetry }: TaskExecutorProps) {
+  const { t } = useTranslation();
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
 
   const completedSteps = task.steps.filter((s) => s.status === 'completed').length;
@@ -59,7 +61,7 @@ export function TaskExecutor({ task, onExecute, onCancel, onRetry }: TaskExecuto
       {/* 头部 */}
       <div className="flex items-center justify-between gap-4 border-b border-line px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <h3 className="truncate text-sm font-semibold text-fg">任务执行</h3>
+          <h3 className="truncate text-sm font-semibold text-fg">{t('task.title')}</h3>
           <Badge tone={taskStatus.tone}>{taskStatus.label}</Badge>
         </div>
 
@@ -71,7 +73,7 @@ export function TaskExecutor({ task, onExecute, onCancel, onRetry }: TaskExecuto
               icon={<Play size={13} />}
               onClick={() => onExecute?.(task.id)}
             >
-              执行
+              {t('task.execute')}
             </Button>
           )}
           {task.status === 'running' && (
@@ -81,7 +83,7 @@ export function TaskExecutor({ task, onExecute, onCancel, onRetry }: TaskExecuto
               icon={<Pause size={13} />}
               onClick={() => onCancel?.(task.id)}
             >
-              取消
+              {t('task.cancel')}
             </Button>
           )}
         </div>
@@ -90,7 +92,7 @@ export function TaskExecutor({ task, onExecute, onCancel, onRetry }: TaskExecuto
       {/* 进度 */}
       <div className="border-b border-line bg-inset px-4 py-3">
         <div className="mb-1.5 flex items-center justify-between text-xs text-fg-muted">
-          <span>进度</span>
+          <span>{t('task.progress')}</span>
           <span className="font-medium text-fg-secondary">
             {completedSteps}/{totalSteps}
           </span>
@@ -131,7 +133,7 @@ export function TaskExecutor({ task, onExecute, onCancel, onRetry }: TaskExecuto
                   {step.tool_name}
                 </span>
                 {step.retry_count > 0 && (
-                  <span className="shrink-0 text-xs text-fg-muted">重试 {step.retry_count} 次</span>
+                  <span className="shrink-0 text-xs text-fg-muted">{t('task.retry')} {step.retry_count} {t('task.retry_count')}</span>
                 )}
                 <Badge tone={config.tone}>{config.label}</Badge>
               </button>
@@ -139,13 +141,13 @@ export function TaskExecutor({ task, onExecute, onCancel, onRetry }: TaskExecuto
               {isExpanded && (
                 <div className="space-y-2 px-4 pb-4 pl-12">
                   <div>
-                    <p className="mb-1 text-xs font-medium text-fg-secondary">参数</p>
+                    <p className="mb-1 text-xs font-medium text-fg-secondary">{t('task.params')}</p>
                     <CodeBlock>{JSON.stringify(step.params, null, 2)}</CodeBlock>
                   </div>
 
                   {step.result && (
                     <div>
-                      <p className="mb-1 text-xs font-medium text-success">结果</p>
+                      <p className="mb-1 text-xs font-medium text-success">{t('task.result')}</p>
                       <CodeBlock className="border-success-line bg-success-subtle text-success">
                         {step.result}
                       </CodeBlock>
@@ -154,7 +156,7 @@ export function TaskExecutor({ task, onExecute, onCancel, onRetry }: TaskExecuto
 
                   {step.error_message && (
                     <div>
-                      <p className="mb-1 text-xs font-medium text-danger">错误</p>
+                      <p className="mb-1 text-xs font-medium text-danger">{t('task.error')}</p>
                       <CodeBlock className="border-danger-line bg-danger-subtle text-danger">
                         {step.error_message}
                       </CodeBlock>
@@ -168,7 +170,7 @@ export function TaskExecutor({ task, onExecute, onCancel, onRetry }: TaskExecuto
                       icon={<RotateCcw size={13} />}
                       onClick={() => onRetry(task.id, step.id)}
                     >
-                      重试此步骤
+                      {t('task.retry_step')}
                     </Button>
                   )}
                 </div>

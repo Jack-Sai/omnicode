@@ -61,6 +61,10 @@ dotenvy = "0.15"
 # 系统目录
 dirs = "5.0"
 
+# 系统信息（用于加密密钥派生）
+hostname = "0.4"
+whoami = "1.5"
+
 # 文件遍历
 walkdir = "2"
 

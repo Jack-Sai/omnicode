@@ -4,6 +4,7 @@ import { User, Lock, Phone, UserPlus, LogIn, Sun, Moon } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { resolveTheme } from '../lib/theme';
 import { Button, Card, Field, IconButton, Input } from './ui';
+import { useTranslation } from '../i18n';
 
 interface AuthUser {
   id: string;
@@ -23,6 +24,7 @@ interface AuthResponse {
 type Mode = 'login' | 'register';
 
 export function AuthPage() {
+  const { t } = useTranslation();
   const { setCurrentUser, setAuthToken, settings, updateSettings } = useAppStore();
   const [mode, setMode] = useState<Mode>('login');
   const [phone, setPhone] = useState('');
@@ -58,7 +60,7 @@ export function AuthPage() {
         setError(response.message);
       }
     } catch (err) {
-      setError(`操作失败: ${err}`);
+      setError(`${t('auth.error.prefix')}${err}`);
     } finally {
       setLoading(false);
     }
@@ -80,11 +82,9 @@ export function AuthPage() {
       <div className="w-full max-w-sm">
         {/* 品牌 */}
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-accent text-base font-bold text-accent-solid shadow-sm">
-            O
-          </div>
+          <img src="/logo.png" alt="Omni Code" className="mx-auto mb-4 h-11 w-11 rounded-lg shadow-sm" />
           <h1 className="text-lg font-semibold tracking-tight text-fg">Omni Code</h1>
-          <p className="mt-1 text-sm text-fg-muted">为代码而生的本地智能体</p>
+          <p className="mt-1 text-sm text-fg-muted">{t('auth.subtitle')}</p>
         </div>
 
         <Card padding="lg" className="shadow-md">
@@ -106,7 +106,7 @@ export function AuthPage() {
               >
                 <span className="flex items-center justify-center gap-2">
                   <LogIn size={14} />
-                  登录
+                  {t('auth.login')}
                 </span>
               </button>
               <button
@@ -118,7 +118,7 @@ export function AuthPage() {
               >
                 <span className="flex items-center justify-center gap-2">
                   <UserPlus size={14} />
-                  注册
+                  {t('auth.register')}
                 </span>
               </button>
             </div>
@@ -131,36 +131,36 @@ export function AuthPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="手机号">
+            <Field label={t('auth.phone')}>
               <Input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="请输入手机号"
+                placeholder={t('auth.phone.placeholder')}
                 leadingIcon={<Phone size={14} />}
                 required
               />
             </Field>
 
             {mode === 'register' && (
-              <Field label="显示名称">
+              <Field label={t('auth.nickname')}>
                 <Input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="请输入显示名称"
+                  placeholder={t('auth.nickname.placeholder')}
                   leadingIcon={<User size={14} />}
                   required
                 />
               </Field>
             )}
 
-            <Field label="密码" hint={mode === 'register' ? '至少 6 位' : undefined}>
+            <Field label={t('auth.password')} hint={mode === 'register' ? t('auth.password.hint') : undefined}>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="请输入密码"
+                placeholder={t('auth.password.placeholder')}
                 leadingIcon={<Lock size={14} />}
                 required
                 minLength={6}
@@ -168,13 +168,13 @@ export function AuthPage() {
             </Field>
 
             <Button type="submit" variant="primary" block disabled={loading}>
-              {loading ? '处理中…' : mode === 'login' ? '登录' : '注册'}
+              {loading ? t('auth.processing') : mode === 'login' ? t('auth.login') : t('auth.register')}
             </Button>
           </form>
 
           <div className="mt-5 border-t border-line pt-4">
             <Button variant="ghost" block onClick={useDemoAccount}>
-              跳过登录，直接体验
+              {t('auth.skip')}
             </Button>
           </div>
         </Card>
@@ -182,7 +182,7 @@ export function AuthPage() {
         {/* 主题开关 */}
         <div className="mt-4 flex justify-center">
           <IconButton
-            label={isDark ? '切换到浅色' : '切换到深色'}
+            label={isDark ? t('sidebar.theme.light') : t('sidebar.theme.dark')}
             size="sm"
             onClick={() => updateSettings({ theme: isDark ? 'light' : 'dark' })}
           >

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Folder, File, ChevronRight, ChevronDown, Home, RefreshCw, Search } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { useTranslation } from '../i18n';
 import { cn } from '../lib/cn';
 import { Card, IconButton, Input } from './ui';
 
@@ -20,6 +21,7 @@ interface FileExplorerProps {
 }
 
 export function FileExplorer({ onSelect, mode = 'browse' }: FileExplorerProps) {
+  const { t } = useTranslation();
   const { settings } = useAppStore();
   const [currentPath, setCurrentPath] = useState(settings.workspacePath || '~');
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -80,13 +82,13 @@ export function FileExplorer({ onSelect, mode = 'browse' }: FileExplorerProps) {
     <Card padding="none" className="flex h-full flex-col overflow-hidden">
       {/* 工具栏 */}
       <div className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-2">
-        <IconButton label="回到工作区" size="sm" onClick={handleGoHome}>
+        <IconButton label={t('files.back')} size="sm" onClick={handleGoHome}>
           <Home size={14} />
         </IconButton>
-        <IconButton label="上级目录" size="sm" onClick={handleGoUp}>
+        <IconButton label={t('files.parent')} size="sm" onClick={handleGoUp}>
           <ChevronRight size={14} className="rotate-180" />
         </IconButton>
-        <IconButton label="刷新" size="sm" onClick={handleRefresh}>
+        <IconButton label={t('files.refresh')} size="sm" onClick={handleRefresh}>
           <RefreshCw size={14} className={cn(loading && 'animate-spin')} />
         </IconButton>
 
@@ -101,7 +103,7 @@ export function FileExplorer({ onSelect, mode = 'browse' }: FileExplorerProps) {
           inputSize="sm"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="搜索…"
+          placeholder={t('files.search')}
           leadingIcon={<Search size={13} />}
           className="w-32 shrink-0"
         />
@@ -112,12 +114,12 @@ export function FileExplorer({ onSelect, mode = 'browse' }: FileExplorerProps) {
         {loading ? (
           <div className="flex h-32 items-center justify-center gap-2 text-xs text-fg-muted">
             <RefreshCw size={14} className="animate-spin" />
-            加载中…
+            {t('files.loading')}
           </div>
         ) : filteredFiles.length === 0 ? (
           <div className="flex h-32 flex-col items-center justify-center gap-2 text-fg-muted">
             <Folder size={24} />
-            <p className="text-xs">空目录</p>
+            <p className="text-xs">{t('files.empty')}</p>
           </div>
         ) : (
           <ul className="py-1">

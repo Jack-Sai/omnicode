@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Plus, Trash2, Power, PowerOff, Globe, Package } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { useTranslation } from '../i18n';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '../lib/cn';
 import {
@@ -61,6 +62,7 @@ const emptyForm = {
 };
 
 export function PluginManager() {
+  const { t } = useTranslation();
   const { currentUser } = useAppStore();
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -131,8 +133,8 @@ export function PluginManager() {
   return (
     <Page>
       <PageHeader
-        title="扩展管理"
-        description="注册 HTTP 远程工具，扩展 Agent 的能力边界。"
+        title={t('plugins.title')}
+        description={t('plugins.desc')}
         actions={
           <Button
             variant="primary"
@@ -142,7 +144,7 @@ export function PluginManager() {
               setShowAddModal(true);
             }}
           >
-            添加插件
+            {t('plugins.add')}
           </Button>
         }
         className="mb-6"
@@ -151,15 +153,15 @@ export function PluginManager() {
       {plugins.length === 0 ? (
         <EmptyState
           icon={<Package size={20} />}
-          title="暂无插件"
-          description="把任意 HTTP 接口注册为工具，Agent 就能在任务中调用它。"
+          title={t('plugins.empty.title')}
+          description={t('plugins.empty.desc')}
           action={
             <Button
               variant="primary"
               icon={<Plus size={15} />}
               onClick={() => setShowAddModal(true)}
             >
-              添加第一个插件
+              {t('plugins.empty.action')}
             </Button>
           }
         />
@@ -197,14 +199,14 @@ export function PluginManager() {
 
                 <div className="mt-2">
                   <Badge tone={plugin.enabled ? 'success' : 'neutral'}>
-                    {plugin.enabled ? '已启用' : '已禁用'}
+                    {plugin.enabled ? t('plugins.enabled') : t('plugins.disabled')}
                   </Badge>
                 </div>
               </div>
 
               <div className="flex shrink-0 items-center gap-1">
                 <IconButton
-                  label={plugin.enabled ? '禁用插件' : '启用插件'}
+                  label={plugin.enabled ? t('plugins.disable') : t('plugins.enable')}
                   size="sm"
                   className={cn(
                     plugin.enabled
@@ -216,7 +218,7 @@ export function PluginManager() {
                   {plugin.enabled ? <Power size={15} /> : <PowerOff size={15} />}
                 </IconButton>
                 <IconButton
-                  label="删除插件"
+                  label={t('plugins.delete')}
                   size="sm"
                   className="text-fg-muted hover:bg-danger-subtle hover:text-danger"
                   onClick={() => handleDeletePlugin(plugin.id)}
@@ -232,42 +234,42 @@ export function PluginManager() {
       <Modal
         open={showAddModal}
         onOpenChange={setShowAddModal}
-        title="添加 HTTP 远程工具"
-        description="填写接口信息，Agent 会在需要时调用该端点。"
+        title={t('plugins.modal.title')}
+        description={t('plugins.modal.desc')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setShowAddModal(false)}>
-              取消
+              {t('plugins.modal.cancel')}
             </Button>
             <Button
               variant="primary"
               onClick={handleAddPlugin}
               disabled={!formData.name || !formData.endpoint}
             >
-              添加
+              {t('plugins.modal.add')}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Field label="工具名称">
+          <Field label={t('plugins.field.name')}>
             <Input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="例如：获取用户列表"
+              placeholder={t('plugins.field.name.placeholder')}
             />
           </Field>
 
-          <Field label="描述">
+          <Field label={t('plugins.field.desc')}>
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={2}
-              placeholder="工具功能描述，帮助 Agent 判断何时调用"
+              placeholder={t('plugins.field.desc.placeholder')}
             />
           </Field>
 
-          <Field label="端点 URL">
+          <Field label={t('plugins.field.endpoint')}>
             <Input
               value={formData.endpoint}
               onChange={(e) => setFormData({ ...formData, endpoint: e.target.value })}
@@ -276,7 +278,7 @@ export function PluginManager() {
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="HTTP 方法">
+            <Field label={t('plugins.field.method')}>
               <Select
                 value={formData.method}
                 onChange={(e) => setFormData({ ...formData, method: e.target.value })}
@@ -289,7 +291,7 @@ export function PluginManager() {
               </Select>
             </Field>
 
-            <Field label="认证方式">
+            <Field label={t('plugins.field.auth')}>
               <Select
                 value={formData.auth_type}
                 onChange={(e) => setFormData({ ...formData, auth_type: e.target.value })}
@@ -314,7 +316,7 @@ export function PluginManager() {
             </Field>
           )}
 
-          <Field label="参数 Schema（JSON）">
+          <Field label={t('plugins.field.schema')}>
             <Textarea
               mono
               value={formData.schema}

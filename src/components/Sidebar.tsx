@@ -1,6 +1,6 @@
+import { useState } from 'react';
 import {
   MessageSquare,
-  History,
   Cpu,
   Settings,
   Plus,
@@ -11,29 +11,24 @@ import {
   Sun,
   Moon,
   Trash2,
+  BookOpen,
 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '../lib/cn';
 import { resolveTheme } from '../lib/theme';
-import { IconButton } from './ui';
+import { Button, IconButton, Modal } from './ui';
+import { useTranslation } from '../i18n';
 
-type Page = 'chat' | 'models' | 'history' | 'settings' | 'plugins' | 'memory';
+type Page = 'chat' | 'models' | 'settings' | 'plugins' | 'memory' | 'knowledge';
 
 interface SidebarProps {
   onNavigate: (page: Page) => void;
   currentPage: Page;
 }
 
-const MENU_ITEMS: { id: Page; icon: React.ReactNode; label: string }[] = [
-  { id: 'chat', icon: <MessageSquare size={16} />, label: '对话' },
-  { id: 'models', icon: <Cpu size={16} />, label: '模型库' },
-  { id: 'memory', icon: <Brain size={16} />, label: '记忆' },
-  { id: 'plugins', icon: <Package size={16} />, label: '扩展' },
-  { id: 'history', icon: <History size={16} />, label: '历史' },
-];
-
 export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
+  const { t } = useTranslation();
   const {
     conversations,
     currentConversationId,
@@ -47,7 +42,16 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
     updateSettings,
   } = useAppStore();
 
+  const MENU_ITEMS: { id: Page; icon: React.ReactNode; label: string }[] = [
+    { id: 'chat', icon: <MessageSquare size={16} />, label: t('menu.chat') },
+    { id: 'models', icon: <Cpu size={16} />, label: t('menu.models') },
+    { id: 'memory', icon: <Brain size={16} />, label: t('menu.memory') },
+    { id: 'plugins', icon: <Package size={16} />, label: t('menu.plugins') },
+    { id: 'knowledge', icon: <BookOpen size={16} />, label: t('menu.knowledge') },
+  ];
+
   const isDark = resolveTheme(settings.theme) === 'dark';
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handleNewConversation = () => {
     const id = uuidv4();
@@ -79,7 +83,7 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
       <div className={cn('shrink-0 px-3 pt-3', sidebarCollapsed && 'px-2')}>
         <button
           onClick={handleNewConversation}
-          title="新对话"
+          title={t('sidebar.new_chat')}
           className={cn(
             'inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-accent-solid',
             'shadow-sm transition-colors duration-150 hover:bg-accent-hover',
@@ -89,7 +93,7 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
           <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm">
             <Plus size={13} />
           </div>
-          {!sidebarCollapsed && <span>新对话</span>}
+          {!sidebarCollapsed && <span>{t('sidebar.new_chat')}</span>}
         </button>
       </div>
 
@@ -127,7 +131,7 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
       <div className={cn('min-h-0 flex-1 overflow-y-auto px-3 pb-2', sidebarCollapsed && 'px-2')}>
         {!sidebarCollapsed && (
           <div className="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
-            对话列表
+            {t('sidebar.conversation_list')}
           </div>
         )}
         <ul className="space-y-0.5">
@@ -183,7 +187,7 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
         )}
         <div className={cn('flex items-center gap-1', sidebarCollapsed && 'flex-col')}>
           <IconButton
-            label={isDark ? '切换到浅色' : '切换到深色'}
+            label={isDark ? t('sidebar.theme.light') : t('sidebar.theme.dark')}
             size="sm"
             onClick={toggleTheme}
             className={cn(!sidebarCollapsed && 'flex-1')}
@@ -191,18 +195,18 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
             {isDark ? <Sun size={15} /> : <Moon size={15} />}
           </IconButton>
           <IconButton
-            label="清空对话"
+            label={t('sidebar.clear')}
             size="sm"
-            onClick={clearConversations}
+            onClick={() => setShowClearConfirm(true)}
             className={cn(!sidebarCollapsed && 'flex-1')}
           >
             <Trash2 size={15} />
           </IconButton>
           <button
             onClick={() => onNavigate('settings')}
-            title="设置"
+            title={t('sidebar.settings')}
             className={cn(
-              'inline-flex h-7 items-center gap-2 rounded-md px-2 text-sm font-medium transition-colors duration-150',
+              'inline-flex h-7 items-center justify-center gap-2 rounded-md px-2 text-sm font-medium transition-colors duration-150',
               'focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]',
               currentPage === 'settings'
                 ? 'bg-accent-subtle text-accent'
@@ -213,7 +217,7 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
             <Settings size={15} className="shrink-0" />
           </button>
           <IconButton
-            label={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
+            label={sidebarCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
             size="sm"
             onClick={toggleSidebar}
             className={cn(!sidebarCollapsed && 'flex-1')}
@@ -223,6 +227,29 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
         </div>
       </div>
     </aside>
+
+    <Modal
+      open={showClearConfirm}
+      onOpenChange={setShowClearConfirm}
+      title={t('sidebar.clear.title')}
+      description={t('sidebar.clear.desc')}
+      footer={
+        <>
+          <Button variant="secondary" onClick={() => setShowClearConfirm(false)}>
+            {t('sidebar.clear.cancel')}
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              clearConversations();
+              setShowClearConfirm(false);
+            }}
+          >
+            {t('sidebar.clear.confirm')}
+          </Button>
+        </>
+      }
+    />
     </>
   );
 }

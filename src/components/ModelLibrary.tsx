@@ -3,6 +3,7 @@ import { Plus, Trash2, Check, Wifi, Settings2, Cpu, Cloud, HardDrive } from 'luc
 import { useAppStore } from '../store/useAppStore';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '../lib/cn';
+import { useTranslation } from '../i18n';
 import {
   Badge,
   Button,
@@ -23,6 +24,7 @@ import type { Model } from '../types';
 const PROVIDERS = [
   { id: 'openai', name: 'OpenAI', endpoint: 'https://api.openai.com/v1/chat/completions' },
   { id: 'anthropic', name: 'Anthropic', endpoint: 'https://api.anthropic.com/v1/messages' },
+  { id: 'zhipu', name: '智谱 AI（GLM）', endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions' },
   { id: 'deepseek', name: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1/chat/completions' },
   { id: 'moonshot', name: '月之暗面', endpoint: 'https://api.moonshot.cn/v1/chat/completions' },
   { id: 'ollama', name: 'Ollama（本地）', endpoint: 'http://localhost:11434/api/chat' },
@@ -47,6 +49,7 @@ const emptyForm = {
 };
 
 export function ModelLibrary() {
+  const { t } = useTranslation();
   const { models, currentModelId, addModel, updateModel, removeModel, setCurrentModel } =
     useAppStore();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -117,11 +120,11 @@ export function ModelLibrary() {
   return (
     <Page>
       <PageHeader
-        title="模型库"
-        description="管理云端 API 与本地部署的推理后端，随时切换。"
+        title={t('models.title')}
+        description={t('models.desc')}
         actions={
           <Button variant="primary" icon={<Plus size={15} />} onClick={openCreate}>
-            添加模型
+            {t('models.add')}
           </Button>
         }
         className="mb-6"
@@ -130,11 +133,11 @@ export function ModelLibrary() {
       {models.length === 0 ? (
         <EmptyState
           icon={<Cpu size={20} />}
-          title="还没有添加模型"
-          description="添加一个云端 API 或本地推理服务后即可开始对话。"
+          title={t('models.empty.title')}
+          description={t('models.empty.desc')}
           action={
             <Button variant="primary" icon={<Plus size={15} />} onClick={openCreate}>
-              添加第一个模型
+              {t('models.empty.action')}
             </Button>
           }
         />
@@ -168,23 +171,23 @@ export function ModelLibrary() {
                   </div>
 
                   <Badge tone={isLocal ? 'success' : 'accent'}>
-                    {isLocal ? '本地' : '云端'}
+                    {isLocal ? t('models.source.local') : t('models.source.cloud')}
                   </Badge>
                 </div>
 
                 <dl className="mt-4 space-y-1 text-xs text-fg-muted">
                   <div className="flex gap-2">
-                    <dt className="shrink-0">端点</dt>
+                    <dt className="shrink-0">{t('models.endpoint')}</dt>
                     <dd className="truncate font-mono text-fg-secondary" title={model.endpoint}>
                       {model.endpoint}
                     </dd>
                   </div>
                   <div className="flex gap-2">
-                    <dt className="shrink-0">上下文</dt>
+                    <dt className="shrink-0">{t('models.context')}</dt>
                     <dd className="text-fg-secondary">{model.contextLength.toLocaleString()}</dd>
                   </div>
                   <div className="flex gap-2">
-                    <dt className="shrink-0">温度</dt>
+                    <dt className="shrink-0">{t('models.temperature')}</dt>
                     <dd className="text-fg-secondary">{model.temperature}</dd>
                   </div>
                 </dl>
@@ -197,17 +200,17 @@ export function ModelLibrary() {
                     onClick={() => setCurrentModel(model.id)}
                     className={cn(!active && 'text-fg-secondary')}
                   >
-                    {active ? '当前使用' : '使用此模型'}
+                    {active ? t('models.current') : t('models.use')}
                   </Button>
                   <div className="flex-1" />
-                  <IconButton label="测试连接" size="sm" onClick={() => testConnection(model)}>
+                  <IconButton label={t('models.test')} size="sm" onClick={() => testConnection(model)}>
                     <Wifi size={14} />
                   </IconButton>
-                  <IconButton label="编辑" size="sm" onClick={() => openEdit(model)}>
+                  <IconButton label={t('models.edit')} size="sm" onClick={() => openEdit(model)}>
                     <Settings2 size={14} />
                   </IconButton>
                   <IconButton
-                    label="删除"
+                    label={t('models.delete')}
                     size="sm"
                     className="text-fg-muted hover:bg-danger-subtle hover:text-danger"
                     onClick={() => removeModel(model.id)}
@@ -224,33 +227,33 @@ export function ModelLibrary() {
       <Modal
         open={showAddModal}
         onOpenChange={setShowAddModal}
-        title={editingModel ? '编辑模型' : '添加模型'}
-        description="填写推理服务信息，API Key 会加密存储在本地。"
+        title={editingModel ? t('models.modal.edit') : t('models.modal.add')}
+        description={t('models.modal.desc')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setShowAddModal(false)}>
-              取消
+              {t('models.modal.cancel')}
             </Button>
             <Button
               variant="primary"
               onClick={handleSubmit}
               disabled={!formData.name || !formData.endpoint}
             >
-              {editingModel ? '保存' : '添加'}
+              {editingModel ? t('models.modal.save') : t('models.modal.create')}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Field label="模型名称">
+          <Field label={t('models.field.name')}>
             <Input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="例如：GPT-4"
+              placeholder={t('models.field.name.placeholder')}
             />
           </Field>
 
-          <Field label="服务商">
+          <Field label={t('models.field.provider')}>
             <Select
               value={formData.provider}
               onChange={(e) => handleProviderChange(e.target.value)}
@@ -263,7 +266,7 @@ export function ModelLibrary() {
             </Select>
           </Field>
 
-          <Field label="端点 URL">
+          <Field label={t('models.field.endpoint')}>
             <Input
               value={formData.endpoint}
               onChange={(e) => setFormData({ ...formData, endpoint: e.target.value })}
@@ -272,7 +275,7 @@ export function ModelLibrary() {
           </Field>
 
           {formData.sourceType === 'api' && (
-            <Field label="API Key" hint="仅保存在本地，不会上传。">
+            <Field label="API Key" hint={t('models.field.key_hint')}>
               <Input
                 type="password"
                 value={formData.apiKey}
@@ -282,16 +285,16 @@ export function ModelLibrary() {
             </Field>
           )}
 
-          <Field label="模型标识">
+          <Field label={t('models.field.identifier')}>
             <Input
               value={formData.modelIdentifier}
               onChange={(e) => setFormData({ ...formData, modelIdentifier: e.target.value })}
-              placeholder="例如：gpt-4、claude-3-opus"
+              placeholder={t('models.field.identifier.placeholder')}
             />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="上下文窗口">
+            <Field label={t('models.field.context')}>
               <Input
                 type="number"
                 value={formData.contextLength}
@@ -300,7 +303,7 @@ export function ModelLibrary() {
                 }
               />
             </Field>
-            <Field label="温度">
+            <Field label={t('models.field.temperature')}>
               <Input
                 type="number"
                 step="0.1"
